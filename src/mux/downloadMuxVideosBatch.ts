@@ -16,8 +16,13 @@ export async function downloadMuxVideosBatch(
   // Deduplicate download URLs
   const uniqueUrls = Array.from(new Set(downloadUrls));
 
+  // Group original URLs to show which tokens share downloads
+  const urlToCount = new Map<string, number>();
+  for (const url of downloadUrls) {
+    urlToCount.set(url, (urlToCount.get(url) || 0) + 1);
+  }
+
   logger.log('Downloading MUX videos', {
-    totalUrls: downloadUrls.length,
     uniqueUrls: uniqueUrls.length,
   });
 
@@ -25,14 +30,9 @@ export async function downloadMuxVideosBatch(
   const downloadPromises = uniqueUrls.map(async (downloadUrl) => {
     try {
       const videoFile = await downloadVideo(downloadUrl);
-      logger.log(`Downloaded video from ${downloadUrl}`, {
-        fileName: videoFile.name,
-        fileType: videoFile.type,
-        fileSize: videoFile.size,
-      });
       return { downloadUrl, videoFile };
     } catch (error: any) {
-      logger.error(`Failed to download video from ${downloadUrl}`, {
+      logger.error('Failed to download video', {
         error: error?.message || 'Unknown error',
       });
       throw error;

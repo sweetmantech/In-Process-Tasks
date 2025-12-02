@@ -52,10 +52,8 @@ export async function migrateMuxToArweave({
 }: MigrateMuxToArweaveInput): Promise<MigrateMuxToArweaveResults> {
   try {
     logger.log('Starting MUX to Arweave migration', {
-      collectionAddress,
       tokenCount: tokenIds.length,
       chainId,
-      artistAddress,
     });
 
     // Step 1: Identify token URIs
@@ -65,8 +63,16 @@ export async function migrateMuxToArweave({
       chainId
     );
 
+    logger.log('Step 1 completed: Token URIs identified', {
+      urisFound: Object.keys(tokenUriMap).length,
+    });
+
     // Step 2: Fetch metadata (deduplicated by URI)
     const metadataMap = await fetchTokenMetadataBatch(tokenIds, tokenUriMap);
+
+    logger.log('Step 2 completed: Metadata fetched', {
+      metadataCount: metadataMap.size,
+    });
 
     if (metadataMap.size === 0) {
       throw new Error('No token metadata found');
@@ -79,12 +85,33 @@ export async function migrateMuxToArweave({
       throw new Error('No tokens with MUX URLs found');
     }
 
+    logger.log('Step 3 completed: MUX tokens filtered', {
+      muxTokenCount: muxTokens.length,
+    });
+
     // Step 4: Download videos from MUX (deduplicated by download URL)
     const downloadUrls = muxTokens.map((token) => token.downloadUrl);
     const videoMap = await downloadMuxVideosBatch(downloadUrls);
 
+    // Map download URLs back to tokenIds for logging
+    const downloadUrlToTokenIds = new Map<string, string[]>();
+    for (const token of muxTokens) {
+      if (!downloadUrlToTokenIds.has(token.downloadUrl)) {
+        downloadUrlToTokenIds.set(token.downloadUrl, []);
+      }
+      downloadUrlToTokenIds.get(token.downloadUrl)!.push(token.tokenId);
+    }
+
+    logger.log('Step 4 completed: Videos downloaded', {
+      uniqueVideos: videoMap.size,
+    });
+
     // Step 5: Upload videos to Arweave (deduplicated)
     const uploadMap = await uploadVideosToArweaveBatch(videoMap);
+
+    logger.log('Step 5 completed: Videos uploaded to Arweave', {
+      uniqueUploads: uploadMap.size,
+    });
 
     // Step 6: Prepare metadata updates
     const metadataUpdates = prepareMetadataUpdates(muxTokens, uploadMap);
@@ -93,8 +120,16 @@ export async function migrateMuxToArweave({
       throw new Error('No metadata updates prepared');
     }
 
+    logger.log('Step 6 completed: Metadata updates prepared', {
+      updateCount: metadataUpdates.length,
+    });
+
     // Step 7: Upload updated metadata to Arweave
     const metadataUriMap = await uploadMetadataBatch(metadataUpdates);
+
+    logger.log('Step 7 completed: Metadata uploaded to Arweave', {
+      tokensWithMetadata: metadataUriMap.size,
+    });
 
     // Step 8: Update token metadata on-chain (batch transaction)
     const transactionHash = await updateTokenMetadataOnChain(
@@ -105,14 +140,23 @@ export async function migrateMuxToArweave({
       metadataMap
     );
 
+    logger.log('Step 8 completed: Token metadata updated on-chain', {
+      transactionHash,
+      tokensUpdated: metadataUriMap.size,
+    });
+
     // Step 9: Delete MUX assets (after successful transaction)
     const deletionResults = await deleteMuxAssetsBatch(muxTokens);
 
     const failedDeletions = deletionResults.filter((r) => !r.success);
+    logger.log('Step 9 completed: MUX assets deletion', {
+      successful: deletionResults.length - failedDeletions.length,
+      failed: failedDeletions.length,
+    });
+
     if (failedDeletions.length > 0) {
       logger.warn('Some MUX asset deletions failed', {
         failedCount: failedDeletions.length,
-        failedTokens: failedDeletions.map((r) => r.tokenId),
       });
     }
 
@@ -139,7 +183,6 @@ export async function migrateMuxToArweave({
   } catch (error: any) {
     logger.error('Migration failed', {
       error: error?.message || 'Unknown error',
-      stack: error?.stack,
     });
     throw new Error(
       `Failed to migrate MUX to Arweave: ${error?.message || 'Unknown error'}`

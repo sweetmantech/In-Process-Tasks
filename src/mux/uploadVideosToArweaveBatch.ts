@@ -32,19 +32,13 @@ export async function uploadVideosToArweaveBatch(
           );
         }
 
-        logger.log(`Uploaded video to Arweave`, {
-          downloadUrl,
-          arweaveUri,
-          fileName: videoFile.name,
-        });
-
         return {
           downloadUrl,
           arweaveUri,
           videoFile,
         };
       } catch (error: any) {
-        logger.error(`Failed to upload video to Arweave for ${downloadUrl}`, {
+        logger.error(`Failed to upload video to Arweave`, {
           error: error?.message || 'Unknown error',
         });
         throw error;

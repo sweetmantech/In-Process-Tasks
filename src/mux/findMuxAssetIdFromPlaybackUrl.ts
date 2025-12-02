@@ -23,7 +23,6 @@ export const findMuxAssetIdFromPlaybackUrl = async (
   } catch (error: any) {
     logger.error('Error finding MUX asset ID', {
       error: error?.message || 'Unknown error',
-      playbackUrl,
     });
     return null;
   }

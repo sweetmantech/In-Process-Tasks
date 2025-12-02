@@ -46,7 +46,6 @@ export async function deleteMuxAssetsBatch(
         const assetId = await findMuxAssetIdFromPlaybackUrl(playbackUrl);
 
         if (!assetId) {
-          logger.warn(`Could not find asset ID for token ${tokenId}`);
           return {
             tokenId,
             success: false,
@@ -56,17 +55,12 @@ export async function deleteMuxAssetsBatch(
 
         await deleteMuxAsset(assetId);
 
-        logger.log(`Deleted MUX asset for token ${tokenId}`, { assetId });
-
         return {
           tokenId,
           assetId,
           success: true,
         };
       } catch (error: any) {
-        logger.warn(`Failed to delete MUX asset for token ${tokenId}`, {
-          error: error?.message || 'Unknown error',
-        });
         return {
           tokenId,
           success: false,

@@ -50,8 +50,18 @@ export function prepareMetadataUpdates(
     });
   }
 
+  // Group updates by arweaveUri to show deduplication
+  const arweaveUriToTokenIds = new Map<string, string[]>();
+  for (const { tokenId, arweaveUri } of updates) {
+    if (!arweaveUriToTokenIds.has(arweaveUri)) {
+      arweaveUriToTokenIds.set(arweaveUri, []);
+    }
+    arweaveUriToTokenIds.get(arweaveUri)!.push(tokenId);
+  }
+
   logger.log('Metadata updates prepared', {
     tokenCount: updates.length,
+    uniqueArweaveUris: arweaveUriToTokenIds.size,
   });
 
   return updates;

@@ -14,10 +14,13 @@ export async function fetchTokenMetadataBatch(
   // Group tokenIds by their URI to avoid duplicate fetches
   const uriToTokenIds = new Map<string, string[]>();
 
+  // Track tokens without URIs
+  const tokensWithoutUris: string[] = [];
+
   for (const tokenId of tokenIds) {
     const tokenUri = tokenUriMap[tokenId];
     if (!tokenUri) {
-      logger.warn(`Skipping token ${tokenId}: no token URI found`);
+      tokensWithoutUris.push(tokenId);
       continue;
     }
 
@@ -49,6 +52,11 @@ export async function fetchTokenMetadataBatch(
       metadataMap.set(tokenId, metadata);
     }
   }
+
+  logger.log('Token metadata fetched', {
+    metadataFetched: metadataMap.size,
+    tokensSkipped: tokensWithoutUris.length,
+  });
 
   return metadataMap;
 }

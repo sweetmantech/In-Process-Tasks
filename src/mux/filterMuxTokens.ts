@@ -46,9 +46,18 @@ export function filterMuxTokens(
     });
   }
 
+  // Group tokens by download URL to show deduplication
+  const downloadUrlToTokenIds = new Map<string, string[]>();
+  for (const { tokenId, downloadUrl } of muxTokens) {
+    if (!downloadUrlToTokenIds.has(downloadUrl)) {
+      downloadUrlToTokenIds.set(downloadUrl, []);
+    }
+    downloadUrlToTokenIds.get(downloadUrl)!.push(tokenId);
+  }
+
   logger.log('Filtered MUX tokens', {
-    totalTokens: metadataMap.size,
     muxTokensFound: muxTokens.length,
+    uniqueDownloadUrls: downloadUrlToTokenIds.size,
   });
 
   return muxTokens;

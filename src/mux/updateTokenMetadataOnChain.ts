@@ -25,13 +25,27 @@ export async function updateTokenMetadataOnChain(
     throw new Error('No token metadata to update');
   }
 
+  // Group tokens by metadata URI to show deduplication
+  const metadataUriToTokenIds = new Map<string, string[]>();
+  for (const [tokenId, metadataUri] of tokenMetadataMap.entries()) {
+    if (!metadataUriToTokenIds.has(metadataUri)) {
+      metadataUriToTokenIds.set(metadataUri, []);
+    }
+    metadataUriToTokenIds.get(metadataUri)!.push(tokenId);
+  }
+
   logger.log('Preparing on-chain updates', {
     tokenCount: tokenMetadataMap.size,
-    collectionAddress,
+    uniqueMetadataUris: metadataUriToTokenIds.size,
   });
 
   // Create update calls for all tokens
   const updateCalls: OneOf<Call<unknown, { [key: string]: unknown }>>[] = [];
+  const callDetails: Array<{
+    tokenId: string;
+    callType: string;
+    metadataUri: string;
+  }> = [];
 
   for (const [tokenId, metadataUri] of tokenMetadataMap.entries()) {
     if (tokenId === '0') {
@@ -56,6 +70,11 @@ export async function updateTokenMetadataOnChain(
           contractName
         ) as OneOf<Call<unknown, { [key: string]: unknown }>>
       );
+      callDetails.push({
+        tokenId,
+        callType: 'updateContractMetadata',
+        metadataUri,
+      });
     } else {
       // Use updateTokenURI for other token IDs
       updateCalls.push(
@@ -63,8 +82,17 @@ export async function updateTokenMetadataOnChain(
           Call<unknown, { [key: string]: unknown }>
         >
       );
+      callDetails.push({
+        tokenId,
+        callType: 'updateTokenURI',
+        metadataUri,
+      });
     }
   }
+
+  logger.log('On-chain update calls prepared', {
+    totalCalls: updateCalls.length,
+  });
 
   // Get or create smart wallet
   const smartAccount = await getOrCreateSmartWallet({

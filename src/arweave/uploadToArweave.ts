@@ -19,12 +19,6 @@ const uploadToArweave = async (
     );
     const buffer = await file.arrayBuffer();
 
-    logger.log('Creating Arweave transaction', {
-      fileSize: buffer.byteLength,
-      fileName: file.name,
-      fileType: file.type,
-    });
-
     const transaction = await arweave.createTransaction(
       {
         data: buffer,
@@ -45,8 +39,7 @@ const uploadToArweave = async (
     await arweave.transactions.sign(transaction, ARWEAVE_KEY);
 
     logger.log('Starting upload', {
-      transactionId: transaction.id,
-      totalChunks: Math.ceil(buffer.byteLength / 256000), // Arweave uses ~256KB chunks
+      fileSizeMB: (buffer.byteLength / (1024 * 1024)).toFixed(2),
     });
 
     const uploader = await arweave.transactions.getUploader(transaction);
@@ -57,13 +50,7 @@ const uploadToArweave = async (
     while (!uploader.isComplete) {
       try {
         const currentProgress = uploader.pctComplete;
-        if (currentProgress !== lastProgress) {
-          logger.log('Upload progress', {
-            progress: `${currentProgress}%`,
-            uploadedChunks: uploader.uploadedChunks,
-            totalChunks: uploader.totalChunks,
-            transactionId: transaction.id,
-          });
+        if (currentProgress !== lastProgress && currentProgress % 25 === 0) {
           getProgress(currentProgress);
           lastProgress = currentProgress;
         }
@@ -72,13 +59,6 @@ const uploadToArweave = async (
         retryCount = 0; // Reset retry count on successful chunk
       } catch (chunkError: any) {
         retryCount++;
-        logger.warn('Chunk upload error', {
-          error: chunkError?.message,
-          retryCount,
-          maxRetries,
-          transactionId: transaction.id,
-        });
-
         if (retryCount >= maxRetries) {
           throw new Error(
             `Failed to upload chunk after ${maxRetries} retries: ${chunkError?.message || 'Unknown error'}`
@@ -92,24 +72,16 @@ const uploadToArweave = async (
 
     logger.log('Upload complete', {
       transactionId: transaction.id,
-      finalProgress: uploader.pctComplete,
     });
 
     // Submit the transaction to ensure it's broadcast to the network
     // This helps with cross-origin accessibility
     try {
-      const response = await arweave.transactions.post(transaction);
-      logger.log('Transaction submitted to network', {
-        transactionId: transaction.id,
-        status: response.status,
-        statusText: response.statusText,
-      });
+      await arweave.transactions.post(transaction);
     } catch (submitError: any) {
       // Log but don't fail - the transaction might already be in the network
       logger.warn('Transaction submission warning', {
-        transactionId: transaction.id,
         error: submitError?.message,
-        note: 'Transaction may already be in the network',
       });
     }
 
@@ -117,8 +89,6 @@ const uploadToArweave = async (
   } catch (error: any) {
     logger.error('Error uploading to Arweave', {
       error: error?.message ?? 'Unknown error',
-      stack: error?.stack,
-      name: error?.name,
     });
     throw new Error(`Error uploading to Arweave: ${error.message}`);
   }

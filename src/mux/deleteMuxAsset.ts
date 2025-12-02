@@ -10,7 +10,6 @@ export const deleteMuxAsset = async (assetId: string): Promise<void> => {
   } catch (error: any) {
     // If asset is already deleted or doesn't exist, that's fine
     if (error?.status === 404) {
-      logger.log(`MUX asset ${assetId} already deleted or not found`);
       return;
     }
     throw new Error(

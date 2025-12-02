@@ -19,8 +19,6 @@ export const downloadVideo = async (downloadUrl: string): Promise<File> => {
   const blob = await response.blob();
   const contentType = response.headers.get('content-type') || 'video/mp4';
 
-  logger.log('Downloaded video content type', { contentType });
-
   // Extract filename from URL or use default
   // Parse URL to handle query strings and fragments properly
   let filename = 'new-video.mp4';
