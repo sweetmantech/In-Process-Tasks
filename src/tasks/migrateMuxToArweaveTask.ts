@@ -18,13 +18,13 @@ export const migrateMuxToArweaveTask = schemaTask({
   run: async (payload: TaskPayload) => {
     try {
       logger.log('Starting MUX to Arweave migration', {
-        tokenContractAddress: payload.tokenContractAddress,
+        collectionAddress: payload.collectionAddress,
         tokenId: payload.tokenId,
         artistAddress: payload.artistAddress,
       });
 
       const result = await migrateMuxToArweave({
-        tokenContractAddress: payload.tokenContractAddress as `0x${string}`,
+        collectionAddress: payload.collectionAddress as `0x${string}`,
         tokenId: payload.tokenId,
         chainId: payload.chainId,
         artistAddress: payload.artistAddress as `0x${string}`,
@@ -35,7 +35,7 @@ export const migrateMuxToArweaveTask = schemaTask({
     } catch (error: any) {
       logger.error('Error migrating MUX to Arweave', {
         error: error?.message ?? 'Unknown error',
-        tokenContractAddress: payload.tokenContractAddress,
+        collectionAddress: payload.collectionAddress,
         tokenId: payload.tokenId,
         artistAddress: payload.artistAddress,
       });

@@ -5,17 +5,15 @@ import { deleteMuxAsset } from './deleteMuxAsset';
 import { findMuxAssetIdFromPlaybackUrl } from './findMuxAssetIdFromPlaybackUrl';
 import { fetchTokenMetadata } from './fetchTokenMetadata';
 import getTokenUri from '../viem/getTokenUri';
-import getUpdateContractMetadataCall from '../viem/getUpdateContractMetadataCall';
 import getUpdateTokenURICall from '../viem/getUpdateTokenURICall';
 import uploadToArweave from '../arweave/uploadToArweave';
 import { getOrCreateSmartWallet } from '../coinbase/getOrCreateSmartWallet';
 import { uploadJson } from '../arweave/uploadJson';
 import { baseSepolia } from 'viem/chains';
 import { sendUserOperation } from '../coinbase/sendUserOperation';
-import { updateTokenContractURI } from '../supabase/in_process_tokens/updateTokenContractURI';
 
 export interface MigrateMuxToArweaveInput {
-  tokenContractAddress: Address;
+  collectionAddress: Address;
   tokenId: string;
   chainId: number;
   artistAddress: Address;
@@ -29,25 +27,24 @@ export interface MigrateMuxToArweaveResult {
 
 /**
  * Migrates a video from MUX to Arweave:
- * 1. Gets token info using viem and fetches metadata from IPFS
- * 2. Extracts download URL from content.uri
+ * 1. Gets token URI using viem and fetches metadata from IPFS
+ * 2. Extracts download URL from content.uri (validates it's a MUX URL)
  * 3. Downloads video from MUX
  * 4. Uploads video to Arweave
- * 5. Updates token metadata object with Arweave URI
+ * 5. Updates token metadata object with Arweave URI (replaces MUX URLs in animation_url and content.uri)
  * 6. Uploads updated metadata JSON to Arweave
- * 7. Updates on-chain token URI and contract metadata
- * 8. Updates in_process_tokens table with new metadata URI
- * 9. Deletes video from MUX
+ * 7. Updates on-chain token URI via user operation
+ * 8. Deletes video from MUX (if playback URL is found)
  */
 export async function migrateMuxToArweave({
-  tokenContractAddress,
+  collectionAddress,
   tokenId,
   chainId,
   artistAddress,
 }: MigrateMuxToArweaveInput): Promise<MigrateMuxToArweaveResult> {
   try {
     // Step 1: Get token info using viem and fetch metadata from IPFS
-    const tokenUri = await getTokenUri(tokenContractAddress, tokenId, chainId);
+    const tokenUri = await getTokenUri(collectionAddress, tokenId, chainId);
 
     logger.log('Token metadata URI', { tokenUri });
 
@@ -114,20 +111,15 @@ export async function migrateMuxToArweave({
     });
 
     const updateTokenURICall = getUpdateTokenURICall(
-      tokenContractAddress,
+      collectionAddress,
       tokenId,
       newMetadataUri
-    );
-    const updateContractURICall = getUpdateContractMetadataCall(
-      tokenContractAddress,
-      newMetadataUri,
-      currentMetadata.name
     );
 
     const transaction = await sendUserOperation({
       smartAccount,
       network: chainId === baseSepolia.id ? 'base-sepolia' : 'base',
-      calls: [updateContractURICall, updateTokenURICall],
+      calls: [updateTokenURICall],
     });
 
     logger.log('Transaction hash', {
@@ -136,18 +128,6 @@ export async function migrateMuxToArweave({
 
     // Step 8: Update in_process_tokens table with new metadata URI
     if (transaction && transaction.transactionHash) {
-      try {
-        await updateTokenContractURI({
-          tokenContractAddress,
-          tokenId: 0,
-          chainId,
-          uri: newMetadataUri,
-        });
-      } catch (dbError) {
-        // Log error but don't fail the migration if database update fails
-        console.error(`Failed to update in_process_tokens:`, dbError);
-      }
-
       // Step 9: Delete video from MUX
       const playbackUrl = currentMetadata.animation_url;
       if (playbackUrl && playbackUrl.includes('stream.mux.com')) {

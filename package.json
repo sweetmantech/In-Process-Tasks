@@ -10,7 +10,7 @@
     "@coinbase/coinbase-sdk": "^0.25.0",
     "@mux/mux-node": "^12.8.0",
     "@supabase/supabase-js": "^2.84.0",
-    "@trigger.dev/sdk": "4.1.1",
+    "@trigger.dev/sdk": "4.1.2",
     "@types/node": "^24.10.1",
     "@zoralabs/protocol-deployments": "^0.6.4",
     "ai": "^5.0.87",
@@ -22,7 +22,7 @@
   },
   "packageManager": "pnpm@9.10.0+sha512.73a29afa36a0d092ece5271de5177ecbf8318d454ecd701343131b8ebc0c1a91c487da46ab77c8e596d6acf1461e3594ced4becedf8921b074fbd8653ed7051c",
   "devDependencies": {
-    "@trigger.dev/build": "4.1.1",
+    "@trigger.dev/build": "4.1.2",
     "prettier": "^3.6.2"
   }
 }
