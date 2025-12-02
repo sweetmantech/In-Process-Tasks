@@ -9,14 +9,18 @@ const arweave = Arweave.init({
   logging: false,
 });
 
-const uploadToArweave = async (
-  file: File,
-  getProgress: (progress: number) => void = () => {}
-): Promise<string> => {
+const uploadToArweave = async (file: File): Promise<string> => {
   try {
     const ARWEAVE_KEY = JSON.parse(
       Buffer.from(process.env.ARWEAVE_KEY as string, 'base64').toString()
     );
+
+    logger.log('Starting upload', {
+      fileSizeMB: (file.size / (1024 * 1024)).toFixed(2),
+      fileName: file.name,
+      fileType: file.type,
+    });
+
     const buffer = await file.arrayBuffer();
 
     const transaction = await arweave.createTransaction(
@@ -38,10 +42,6 @@ const uploadToArweave = async (
 
     await arweave.transactions.sign(transaction, ARWEAVE_KEY);
 
-    logger.log('Starting upload', {
-      fileSizeMB: (buffer.byteLength / (1024 * 1024)).toFixed(2),
-    });
-
     const uploader = await arweave.transactions.getUploader(transaction);
     let lastProgress = 0;
     let retryCount = 0;
@@ -51,7 +51,9 @@ const uploadToArweave = async (
       try {
         const currentProgress = uploader.pctComplete;
         if (currentProgress !== lastProgress && currentProgress % 25 === 0) {
-          getProgress(currentProgress);
+          logger.log('Upload progress', {
+            progress: currentProgress,
+          });
           lastProgress = currentProgress;
         }
 

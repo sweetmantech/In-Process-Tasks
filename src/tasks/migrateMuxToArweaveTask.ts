@@ -15,6 +15,15 @@ export const migrateMuxToArweaveTask = schemaTask({
   schema: migrateMuxSchema.extend({
     artistAddress: addressSchema,
   }),
+  // Use large-2x machine (8 vCPU, 16GB RAM) for video processing
+  // This matches the config default but makes it explicit
+  machine: 'large-2x',
+  // Retry configuration for OOM errors
+  retry: {
+    outOfMemory: {
+      machine: 'large-2x', // Already at max, but ensures retry behavior
+    },
+  },
   run: async (payload: TaskPayload) => {
     try {
       const result = await migrateMuxToArweave({
