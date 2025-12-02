@@ -1,4 +1,4 @@
-import { logger } from '@trigger.dev/sdk';
+import { logger } from '@trigger.dev/sdk/v3';
 
 /**
  * Downloads a video file from MUX using the asset's master download URL

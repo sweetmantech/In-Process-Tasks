@@ -5,7 +5,7 @@ import { base } from 'viem/chains';
  */
 export const migrateMuxSchema = z.object({
   collectionAddress: z.string().min(1),
-  tokenId: z.string().min(1),
+  tokenIds: z.array(z.string()),
   chainId: z.number().optional().default(base.id),
 });
 

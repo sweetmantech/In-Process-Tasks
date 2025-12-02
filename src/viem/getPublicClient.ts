@@ -1,6 +1,5 @@
 import { createPublicClient, http, PublicClient } from 'viem';
 import getViemNetwork from '../viem/getViemNetwork';
-import { baseSepolia } from 'viem/chains';
 import getAlchemyRpcUrl from '../alchemy/getAlchemyRpcUrl';
 
 export const getPublicClient = (chainId: number) => {
@@ -11,5 +10,3 @@ export const getPublicClient = (chainId: number) => {
     transport: http(RPC_URL),
   }) as PublicClient;
 };
-
-export const publicClient = getPublicClient(baseSepolia.id);

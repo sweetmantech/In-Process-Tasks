@@ -1,154 +1,146 @@
 import { logger } from '@trigger.dev/sdk/v3';
 import { Address } from 'viem';
-import { downloadVideo } from './downloadVideo';
-import { deleteMuxAsset } from './deleteMuxAsset';
-import { findMuxAssetIdFromPlaybackUrl } from './findMuxAssetIdFromPlaybackUrl';
-import { fetchTokenMetadata } from './fetchTokenMetadata';
-import getTokenUri from '../viem/getTokenUri';
-import getUpdateTokenURICall from '../viem/getUpdateTokenURICall';
-import uploadToArweave from '../arweave/uploadToArweave';
-import { getOrCreateSmartWallet } from '../coinbase/getOrCreateSmartWallet';
-import { uploadJson } from '../arweave/uploadJson';
-import { baseSepolia } from 'viem/chains';
-import { sendUserOperation } from '../coinbase/sendUserOperation';
+import { identifyTokenUris } from './identifyTokenUris';
+import { fetchTokenMetadataBatch } from './fetchTokenMetadataBatch';
+import { filterMuxTokens } from './filterMuxTokens';
+import { downloadMuxVideosBatch } from './downloadMuxVideosBatch';
+import { uploadVideosToArweaveBatch } from './uploadVideosToArweaveBatch';
+import { prepareMetadataUpdates } from './prepareMetadataUpdates';
+import { uploadMetadataBatch } from './uploadMetadataBatch';
+import { updateTokenMetadataOnChain } from './updateTokenMetadataOnChain';
+import { deleteMuxAssetsBatch } from './deleteMuxAssetsBatch';
 
 export interface MigrateMuxToArweaveInput {
   collectionAddress: Address;
-  tokenId: string;
+  tokenIds: string[];
   chainId: number;
   artistAddress: Address;
 }
 
 export interface MigrateMuxToArweaveResult {
   success: boolean;
+  tokenId: string;
   arweaveUri: string;
+  metadataUri: string;
+}
+
+export interface MigrateMuxToArweaveResults {
+  success: boolean;
   transactionHash: string;
+  results: MigrateMuxToArweaveResult[];
 }
 
 /**
- * Migrates a video from MUX to Arweave:
- * 1. Gets token URI using viem and fetches metadata from IPFS
- * 2. Extracts download URL from content.uri (validates it's a MUX URL)
- * 3. Downloads video from MUX
- * 4. Uploads video to Arweave
- * 5. Updates token metadata object with Arweave URI (replaces MUX URLs in animation_url and content.uri)
- * 6. Uploads updated metadata JSON to Arweave
- * 7. Updates on-chain token URI via user operation
- * 8. Deletes video from MUX (if playback URL is found)
+ * Migrates videos from MUX to Arweave for multiple tokens.
+ *
+ * Architecture:
+ * 1. Identify token URIs
+ * 2. Fetch metadata (deduplicated by URI)
+ * 3. Filter tokens with MUX URLs
+ * 4. Download videos from MUX (deduplicated by download URL)
+ * 5. Upload videos to Arweave (deduplicated)
+ * 6. Prepare metadata updates
+ * 7. Upload updated metadata to Arweave
+ * 8. Update token metadata on-chain (batch transaction)
+ * 9. Delete MUX assets
  */
 export async function migrateMuxToArweave({
   collectionAddress,
-  tokenId,
+  tokenIds,
   chainId,
   artistAddress,
-}: MigrateMuxToArweaveInput): Promise<MigrateMuxToArweaveResult> {
+}: MigrateMuxToArweaveInput): Promise<MigrateMuxToArweaveResults> {
   try {
-    // Step 1: Get token info using viem and fetch metadata from IPFS
-    const tokenUri = await getTokenUri(collectionAddress, tokenId, chainId);
-
-    logger.log('Token metadata URI', { tokenUri });
-
-    const currentMetadata = await fetchTokenMetadata(tokenUri);
-    if (!currentMetadata) {
-      throw new Error('Failed to fetch current token metadata');
-    }
-
-    logger.log('Current token metadata', { currentMetadata });
-
-    // Step 2: Extract download URL from content.uri (should be MUX download URL)
-    const downloadUrl = currentMetadata.content?.uri;
-    if (!downloadUrl) {
-      throw new Error('Token metadata does not have a content URI');
-    }
-
-    logger.log('Download URL', { downloadUrl });
-
-    // Check if it's a MUX URL (download URL or playback URL)
-    const isMuxUrl =
-      downloadUrl.includes('mux.com') || downloadUrl.includes('stream.mux.com');
-    if (!isMuxUrl) {
-      throw new Error('Content URI is not a MUX URL - migration not needed');
-    }
-
-    // Step 3: Download video from MUX
-    const videoFile = await downloadVideo(downloadUrl);
-
-    logger.log('Video file downloaded from MUX', { videoFile });
-
-    // Step 4: Upload video to Arweave
-    const arweaveUri = await uploadToArweave(videoFile);
-
-    if (!arweaveUri) {
-      throw new Error('Failed to upload video to Arweave');
-    }
-
-    logger.log('Video file uploaded to Arweave', { arweaveUri });
-
-    // Step 5: Update metadata with Arweave URI (replace MUX URLs)
-    // Preserve existing mime type or default to video/mp4
-    const mimeType =
-      currentMetadata.content?.mime || videoFile.type || 'video/mp4';
-
-    logger.log('Mime type', { mimeType });
-
-    const updatedMetadata = {
-      ...currentMetadata,
-      animation_url: arweaveUri,
-      content: {
-        mime: mimeType,
-        uri: arweaveUri,
-      },
-    };
-
-    // Step 6: Upload updated metadata JSON to Arweave
-    const newMetadataUri = await uploadJson(updatedMetadata);
-
-    logger.log('New metadata URI', { newMetadataUri });
-
-    // Step 7: Update on-chain token URI and contract metadata
-    const smartAccount = await getOrCreateSmartWallet({
-      address: artistAddress,
+    logger.log('Starting MUX to Arweave migration', {
+      collectionAddress,
+      tokenCount: tokenIds.length,
+      chainId,
+      artistAddress,
     });
 
-    const updateTokenURICall = getUpdateTokenURICall(
+    // Step 1: Identify token URIs
+    const tokenUriMap = await identifyTokenUris(
       collectionAddress,
-      tokenId,
-      newMetadataUri
+      tokenIds,
+      chainId
     );
 
-    const transaction = await sendUserOperation({
-      smartAccount,
-      network: chainId === baseSepolia.id ? 'base-sepolia' : 'base',
-      calls: [updateTokenURICall],
-    });
+    // Step 2: Fetch metadata (deduplicated by URI)
+    const metadataMap = await fetchTokenMetadataBatch(tokenIds, tokenUriMap);
 
-    logger.log('Transaction hash', {
-      transactionHash: transaction.transactionHash,
-    });
-
-    // Step 8: Update in_process_tokens table with new metadata URI
-    if (transaction && transaction.transactionHash) {
-      // Step 9: Delete video from MUX
-      const playbackUrl = currentMetadata.animation_url;
-      if (playbackUrl && playbackUrl.includes('stream.mux.com')) {
-        try {
-          const assetId = await findMuxAssetIdFromPlaybackUrl(playbackUrl);
-          if (assetId) {
-            await deleteMuxAsset(assetId);
-          }
-        } catch (deleteError) {
-          // Log error but don't fail the migration if deletion fails
-          console.error(`Failed to delete MUX asset:`, deleteError);
-        }
-      }
+    if (metadataMap.size === 0) {
+      throw new Error('No token metadata found');
     }
+
+    // Step 3: Filter tokens with MUX URLs
+    const muxTokens = filterMuxTokens(metadataMap);
+
+    if (muxTokens.length === 0) {
+      throw new Error('No tokens with MUX URLs found');
+    }
+
+    // Step 4: Download videos from MUX (deduplicated by download URL)
+    const downloadUrls = muxTokens.map((token) => token.downloadUrl);
+    const videoMap = await downloadMuxVideosBatch(downloadUrls);
+
+    // Step 5: Upload videos to Arweave (deduplicated)
+    const uploadMap = await uploadVideosToArweaveBatch(videoMap);
+
+    // Step 6: Prepare metadata updates
+    const metadataUpdates = prepareMetadataUpdates(muxTokens, uploadMap);
+
+    if (metadataUpdates.length === 0) {
+      throw new Error('No metadata updates prepared');
+    }
+
+    // Step 7: Upload updated metadata to Arweave
+    const metadataUriMap = await uploadMetadataBatch(metadataUpdates);
+
+    // Step 8: Update token metadata on-chain (batch transaction)
+    const transactionHash = await updateTokenMetadataOnChain(
+      collectionAddress,
+      metadataUriMap,
+      chainId,
+      artistAddress,
+      metadataMap
+    );
+
+    // Step 9: Delete MUX assets (after successful transaction)
+    const deletionResults = await deleteMuxAssetsBatch(muxTokens);
+
+    const failedDeletions = deletionResults.filter((r) => !r.success);
+    if (failedDeletions.length > 0) {
+      logger.warn('Some MUX asset deletions failed', {
+        failedCount: failedDeletions.length,
+        failedTokens: failedDeletions.map((r) => r.tokenId),
+      });
+    }
+
+    // Prepare results
+    const results: MigrateMuxToArweaveResult[] = metadataUpdates.map(
+      ({ tokenId, arweaveUri }) => ({
+        success: true,
+        tokenId,
+        arweaveUri,
+        metadataUri: metadataUriMap.get(tokenId) || '',
+      })
+    );
+
+    logger.log('Migration completed successfully', {
+      transactionHash,
+      tokensMigrated: results.length,
+    });
 
     return {
       success: true,
-      arweaveUri,
-      transactionHash: transaction.transactionHash,
+      transactionHash,
+      results,
     };
   } catch (error: any) {
+    logger.error('Migration failed', {
+      error: error?.message || 'Unknown error',
+      stack: error?.stack,
+    });
     throw new Error(
       `Failed to migrate MUX to Arweave: ${error?.message || 'Unknown error'}`
     );

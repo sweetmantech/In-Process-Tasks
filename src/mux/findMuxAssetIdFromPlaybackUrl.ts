@@ -1,3 +1,4 @@
+import { logger } from '@trigger.dev/sdk/v3';
 import mux from './mux';
 
 /**
@@ -19,8 +20,11 @@ export const findMuxAssetIdFromPlaybackUrl = async (
     // Direct lookup using playbackIds.retrieve endpoint
     const playbackInfo = await mux.video.playbackIds.retrieve(playbackId);
     return playbackInfo.object?.id || null;
-  } catch (error) {
-    console.error('Error finding MUX asset ID:', error);
+  } catch (error: any) {
+    logger.error('Error finding MUX asset ID', {
+      error: error?.message || 'Unknown error',
+      playbackUrl,
+    });
     return null;
   }
 };
