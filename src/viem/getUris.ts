@@ -51,7 +51,7 @@ const getUris = async (
 
   // Log failed tokens if any
   if (failedTokens.length > 0) {
-    console.warn('Some tokens failed to fetch URIs:', {
+    logger.warn('Some tokens failed to fetch URIs:', {
       failedCount: failedTokens.length,
     });
   }

@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { base } from 'viem/chains';
+import addressSchema from './addressSchema';
 /**
  * Schema for validating MUX to Arweave migration requests.
  */
 export const migrateMuxSchema = z.object({
-  collectionAddress: z.string().min(1),
+  collectionAddress: addressSchema,
   tokenIds: z.array(z.string()),
   chainId: z.number().optional().default(base.id),
 });

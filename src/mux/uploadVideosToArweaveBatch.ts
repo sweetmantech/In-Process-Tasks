@@ -9,8 +9,9 @@ export interface ArweaveUploadResult {
 }
 
 /**
- * Uploads videos to Arweave in batch, avoiding duplicate uploads.
- * Uses file content hash or URL to deduplicate.
+ * Uploads videos to Arweave in batch.
+ * Uploads all entries provided in videoMap (no internal deduplication).
+ * Deduplication is performed upstream during the download phase.
  * Returns a map of downloadUrl to ArweaveUploadResult.
  */
 export async function uploadVideosToArweaveBatch(
