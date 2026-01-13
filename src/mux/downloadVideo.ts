@@ -129,7 +129,10 @@ export const downloadVideo = async (downloadUrl: string): Promise<File> => {
       bufferSizeBytes: fileBuffer.length,
     });
 
-    const contentType = response.headers.get('content-type') || 'video/mp4';
+    let contentType = response.headers.get('content-type') || 'video/mp4';
+    if (contentType === 'video/3gpp') {
+      contentType = 'video/mp4';
+    }
 
     // Extract filename from URL or use default
     // Parse URL to handle query strings and fragments properly
