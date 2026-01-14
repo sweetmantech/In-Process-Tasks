@@ -1,13 +1,5 @@
-import { InboundMessagePayload } from 'telnyx/resources/shared.mjs';
-
-const getMediaBlob = async (
-  photo: InboundMessagePayload.Media
-): Promise<Blob> => {
-  if (!photo.url) {
-    throw new Error('Photo URL is missing');
-  }
-
-  const response = await fetch(photo.url);
+const getMediaBlob = async (url: string): Promise<Blob> => {
+  const response = await fetch(url);
 
   if (!response.ok) {
     throw new Error(

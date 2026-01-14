@@ -5,11 +5,7 @@ import processVideoThroughMuxToArweave from './processVideoThroughMuxToArweave';
 import { ProcessMmsInput } from '../schemas/processMmsSchema';
 
 const uploadMetadata = async (payload: ProcessMmsInput) => {
-  const media = payload.media?.[0];
-  if (!media) {
-    throw new Error('Media is required');
-  }
-  const blob = await getMediaBlob(media);
+  const blob = await getMediaBlob(payload.media);
   const name = payload?.subject || payload?.text || `photo-${Date.now()}`;
 
   let image: string | undefined = undefined;
@@ -17,13 +13,13 @@ const uploadMetadata = async (payload: ProcessMmsInput) => {
   let content_uri: string | undefined = undefined;
   let content_type: string = blob.type;
 
-  if (media.content_type?.includes('image')) {
+  if (content_type?.includes('image')) {
     const file = new File([blob], name, { type: content_type });
     const mediaUri = await uploadToArweave(file);
     image = mediaUri;
     content_uri = mediaUri;
   }
-  if (media.content_type?.includes('video')) {
+  if (content_type?.includes('video')) {
     const { mediaUri, file } = await processVideoThroughMuxToArweave(
       blob,
       content_type
@@ -38,7 +34,7 @@ const uploadMetadata = async (payload: ProcessMmsInput) => {
     image,
     animation_url,
     content: {
-      mime: media.content_type,
+      mime: content_type,
       uri: content_uri,
     },
   });
