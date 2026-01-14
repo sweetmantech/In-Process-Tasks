@@ -1,5 +1,5 @@
 import { logger } from '@trigger.dev/sdk/v3';
-import { TokenMetadataJson } from '../ipfs/types';
+import { TokenMetadataJson } from './types';
 
 export interface MuxTokenInfo {
   tokenId: string;

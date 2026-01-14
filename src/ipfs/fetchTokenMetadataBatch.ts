@@ -1,6 +1,6 @@
 import { logger } from '@trigger.dev/sdk/v3';
 import { fetchTokenMetadata } from './fetchTokenMetadata';
-import { TokenMetadataJson } from '../ipfs/types';
+import { TokenMetadataJson } from './types';
 
 /**
  * Fetches token metadata for multiple tokens in parallel.

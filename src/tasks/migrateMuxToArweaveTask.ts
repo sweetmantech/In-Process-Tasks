@@ -3,7 +3,7 @@ import {
   migrateMuxSchema,
   type MigrateMuxInput,
 } from '../schemas/migrateMuxSchema';
-import { migrateMuxToArweave } from '../mux/migrateMuxToArweave';
+import { migrateMuxToArweave } from './migrateMuxToArweave';
 import addressSchema from '../schemas/addressSchema';
 
 type TaskPayload = MigrateMuxInput & {

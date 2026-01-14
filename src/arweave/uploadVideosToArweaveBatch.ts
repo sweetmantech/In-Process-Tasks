@@ -1,6 +1,6 @@
 import { logger } from '@trigger.dev/sdk/v3';
-import uploadToArweave from '../arweave/uploadToArweave';
-import { VideoDownloadResult } from './downloadMuxVideosBatch';
+import uploadToArweave from './uploadToArweave';
+import { VideoDownloadResult } from '../mux/downloadMuxVideosBatch';
 
 export interface ArweaveUploadResult {
   downloadUrl: string;

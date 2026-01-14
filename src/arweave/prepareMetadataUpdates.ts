@@ -1,7 +1,7 @@
 import { logger } from '@trigger.dev/sdk/v3';
 import { TokenMetadataJson } from '../ipfs/types';
-import { MuxTokenInfo } from './filterMuxTokens';
-import { ArweaveUploadResult } from './uploadVideosToArweaveBatch';
+import { MuxTokenInfo } from '../ipfs/filterMuxTokens';
+import { ArweaveUploadResult } from '../arweave/uploadVideosToArweaveBatch';
 
 export interface MetadataUpdate {
   tokenId: string;
