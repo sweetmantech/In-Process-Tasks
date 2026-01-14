@@ -2,13 +2,11 @@ import uploadMetadata from './uploadMetadata';
 import { parseUnits, maxUint64 } from 'viem';
 import getUsdcAddress from '../getUsdcAddress';
 import { ProcessMmsInput } from '../schemas/processMmsSchema';
+import { sendSms } from './sendSms';
+import { baseSepolia } from 'viem/chains';
 
 const createMoment = async (payload: ProcessMmsInput) => {
-  const media = payload.media?.[0];
-  if (!media) {
-    throw new Error('Media is required');
-  }
-  const { uri, name } = await uploadMetadata(media, payload);
+  const { uri, name } = await uploadMetadata(payload);
   const momentCreateParameters = {
     contract: {
       name,
@@ -20,8 +18,10 @@ const createMoment = async (payload: ProcessMmsInput) => {
       salesConfig: {
         type: 'erc20Mint',
         pricePerToken: parseUnits('1', 6).toString(),
-        saleStart: BigInt(Number(new Date().getTime() / 1000).toFixed(0)),
-        saleEnd: maxUint64,
+        saleStart: BigInt(
+          Number(new Date().getTime() / 1000).toFixed(0)
+        ).toString(),
+        saleEnd: maxUint64.toString(),
         currency: getUsdcAddress(payload.chainId),
       },
       mintToCreatorCount: 1,
@@ -29,6 +29,22 @@ const createMoment = async (payload: ProcessMmsInput) => {
     },
     account: payload.artistAddress,
   };
+  const response = await fetch('https://inprocess.world/api/moment/create', {
+    method: 'POST',
+    body: JSON.stringify(momentCreateParameters),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to create moment');
+  }
+  const data = await response.json();
+  await sendSms(
+    payload?.from?.phone_number as string,
+    `Moment created!: ${
+      payload?.chainId === baseSepolia.id
+        ? 'https://in-process-git-test-sweetmantechs-projects.vercel.app'
+        : 'https://inprocess.world'
+    }/collect/${payload?.chainId === baseSepolia.id ? 'bsep' : 'base'}:${data.contractAddress}/${data.tokenId}`
+  );
 };
 
 export default createMoment;

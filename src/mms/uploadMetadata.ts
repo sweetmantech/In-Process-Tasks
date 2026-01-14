@@ -1,15 +1,14 @@
 import { uploadJson } from '../arweave/uploadJson';
-import { InboundMessagePayload } from 'telnyx/resources/shared.mjs';
 import getMediaBlob from './getMediaBlob';
 import uploadToArweave from '../arweave/uploadToArweave';
-import { createMuxUpload } from '../mux/createMuxUpload';
-import getAssetInfo from '../mux/getAssetInfo';
-import { downloadVideo } from '../mux/downloadVideo';
+import processVideoThroughMuxToArweave from './processVideoThroughMuxToArweave';
+import { ProcessMmsInput } from '../schemas/processMmsSchema';
 
-const uploadMetadata = async (
-  media: InboundMessagePayload.Media,
-  payload: InboundMessagePayload | undefined
-) => {
+const uploadMetadata = async (payload: ProcessMmsInput) => {
+  const media = payload.media?.[0];
+  if (!media) {
+    throw new Error('Media is required');
+  }
   const blob = await getMediaBlob(media);
   const name = payload?.subject || payload?.text || `photo-${Date.now()}`;
 
@@ -25,24 +24,10 @@ const uploadMetadata = async (
     content_uri = mediaUri;
   }
   if (media.content_type?.includes('video')) {
-    const buffer = await blob.arrayBuffer();
-    const upload = await createMuxUpload();
-    const uploadResponse = await fetch(upload.url, {
-      method: 'PUT',
-      body: buffer as BodyInit,
-      headers: {
-        'Content-Type': content_type,
-      },
-    });
-    if (!uploadResponse.ok) {
-      throw new Error('Failed to upload video to Mux');
-    }
-    const assetInfo = await getAssetInfo(upload.id);
-    if (!assetInfo) {
-      throw new Error('Failed to get asset info from Mux');
-    }
-    const file = await downloadVideo(assetInfo.downloadUrl);
-    const mediaUri = await uploadToArweave(file);
+    const { mediaUri, file } = await processVideoThroughMuxToArweave(
+      blob,
+      content_type
+    );
     animation_url = mediaUri;
     content_uri = mediaUri;
     content_type = file.type;

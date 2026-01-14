@@ -5,7 +5,7 @@ import {
 } from '../schemas/processMmsSchema';
 import createMoment from '../mms/createMoment';
 
-export const migrateMuxToArweaveTask = schemaTask({
+export const processMmsTask = schemaTask({
   id: 'process-mms-task',
   schema: processMmsSchema,
   // Use large-2x machine (8 vCPU, 16GB RAM) for video processing
@@ -19,14 +19,9 @@ export const migrateMuxToArweaveTask = schemaTask({
   },
   run: async (payload: ProcessMmsInput) => {
     try {
-      const result = await createMoment(payload);
-      //   logger.log('Migration completed', {
-      //     transactionHash: result.transactionHash,
-      //     tokensMigrated: result.results.length,
-      //   });
-      //   return result;
+      await createMoment(payload);
     } catch (error: any) {
-      logger.error('Error migrating MUX to Arweave', {
+      logger.error('Error processing MMS', {
         error: error?.message ?? 'Unknown error',
       });
     }
