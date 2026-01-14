@@ -1,5 +1,5 @@
 import { logger } from '@trigger.dev/sdk/v3';
-import { uploadJson } from '../arweave/uploadJson';
+import { uploadJson } from './uploadJson';
 import { MetadataUpdate } from './prepareMetadataUpdates';
 
 export interface MetadataUploadResult {

@@ -1,14 +1,14 @@
 import { logger } from '@trigger.dev/sdk/v3';
 import { Address } from 'viem';
-import { identifyTokenUris } from './identifyTokenUris';
-import { fetchTokenMetadataBatch } from './fetchTokenMetadataBatch';
-import { filterMuxTokens } from './filterMuxTokens';
-import { downloadMuxVideosBatch } from './downloadMuxVideosBatch';
-import { uploadVideosToArweaveBatch } from './uploadVideosToArweaveBatch';
-import { prepareMetadataUpdates } from './prepareMetadataUpdates';
-import { uploadMetadataBatch } from './uploadMetadataBatch';
-import { updateTokenMetadataOnChain } from './updateTokenMetadataOnChain';
-import { deleteMuxAssetsBatch } from './deleteMuxAssetsBatch';
+import { identifyTokenUris } from '../ipfs/identifyTokenUris';
+import { fetchTokenMetadataBatch } from '../ipfs/fetchTokenMetadataBatch';
+import { filterMuxTokens } from '../ipfs/filterMuxTokens';
+import { downloadMuxVideosBatch } from '../mux/downloadMuxVideosBatch';
+import { uploadVideosToArweaveBatch } from '../arweave/uploadVideosToArweaveBatch';
+import { prepareMetadataUpdates } from '../arweave/prepareMetadataUpdates';
+import { uploadMetadataBatch } from '../arweave/uploadMetadataBatch';
+import { updateTokenMetadataOnChain } from '../coinbase/updateTokenMetadataOnChain';
+import { deleteMuxAssetsBatch } from '../mux/deleteMuxAssetsBatch';
 
 export interface MigrateMuxToArweaveInput {
   collectionAddress: Address;

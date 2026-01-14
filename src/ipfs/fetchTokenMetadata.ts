@@ -1,5 +1,5 @@
-import { getFetchableUrl } from '../ipfs/gateway';
-import { TokenMetadataJson } from '../ipfs/types';
+import { getFetchableUrl } from './gateway';
+import { TokenMetadataJson } from './types';
 
 export async function fetchTokenMetadata(tokenMetadataURI: string) {
   const fetchableUrl = getFetchableUrl(tokenMetadataURI);

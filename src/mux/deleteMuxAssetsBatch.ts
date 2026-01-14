@@ -1,7 +1,7 @@
 import { logger } from '@trigger.dev/sdk/v3';
 import { deleteMuxAsset } from './deleteMuxAsset';
 import { findMuxAssetIdFromPlaybackUrl } from './findMuxAssetIdFromPlaybackUrl';
-import { MuxTokenInfo } from './filterMuxTokens';
+import { MuxTokenInfo } from '../ipfs/filterMuxTokens';
 
 export interface MuxDeletionResult {
   tokenId: string;
