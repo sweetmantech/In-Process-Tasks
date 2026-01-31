@@ -27,8 +27,10 @@ const processMessageMoment = async (messageId: string) => {
         throw new Error(result.error);
       }
 
-      // "Moment not found" - continue polling
-      logger.log('Moment is not indexed yet, retrying...', { messageId });
+      // "Moment is not indexed yet" - continue polling
+      logger.log('Message moment is not indexed yet, retrying...', {
+        messageId,
+      });
     }
 
     await new Promise((resolve) => setTimeout(resolve, 3000));
