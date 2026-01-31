@@ -24,7 +24,7 @@ const processMessageMoment = async (messageId: string) => {
           error: result.error,
           messageId,
         });
-        throw new Error(result.error);
+        break;
       }
 
       // "Moment is not indexed yet" - continue polling
