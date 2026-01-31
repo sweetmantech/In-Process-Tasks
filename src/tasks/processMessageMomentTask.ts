@@ -8,6 +8,7 @@ import processMessageMoment from '../message/processMessageMoment';
 export const processMessageMomentTask = schemaTask({
   id: 'process-message-moment',
   schema: processMessageMomentSchema,
+  machine: 'micro',
   run: async (payload: ProcessMessageMomentPayload) => {
     try {
       logger.log('Processing message moment', {
