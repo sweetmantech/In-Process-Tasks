@@ -16,6 +16,11 @@ export const migrateMuxToArweaveTask = schemaTask({
     artistAddress: addressSchema,
   }),
   machine: 'micro',
+  retry: {
+    outOfMemory: {
+      machine: 'small-1x',
+    },
+  },
   run: async (payload: TaskPayload) => {
     try {
       const result = await migrateMuxToArweave({
