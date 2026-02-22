@@ -1,13 +1,5 @@
 import { logger } from '@trigger.dev/sdk';
-import Arweave from 'arweave';
-
-const arweave = Arweave.init({
-  host: 'arweave.net',
-  port: 443,
-  protocol: 'https',
-  timeout: 60000,
-  logging: false,
-});
+import { TurboFactory } from '@ardrive/turbo-sdk';
 
 const uploadToArweave = async (file: File): Promise<string> => {
   try {
@@ -21,73 +13,29 @@ const uploadToArweave = async (file: File): Promise<string> => {
       fileType: file.type,
     });
 
-    const buffer = await file.arrayBuffer();
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    const transaction = await arweave.createTransaction(
-      {
-        data: buffer,
-      },
-      ARWEAVE_KEY
-    );
+    const turboClient = TurboFactory.authenticated({ privateKey: ARWEAVE_KEY });
 
-    // Add essential tags for accessibility and CORS
-    transaction.addTag('Content-Type', file.type);
-    transaction.addTag('App-Name', 'In-Process-Tasks');
-    transaction.addTag('App-Version', '1.0.0');
+    const tags = [
+      { name: 'Content-Type', value: file.type },
+      { name: 'App-Name', value: 'In-Process-Tasks' },
+      { name: 'App-Version', value: '1.0.0' },
+    ];
 
-    // Add filename if available
     if (file.name) {
-      transaction.addTag('File-Name', file.name);
+      tags.push({ name: 'File-Name', value: file.name });
     }
 
-    await arweave.transactions.sign(transaction, ARWEAVE_KEY);
-
-    const uploader = await arweave.transactions.getUploader(transaction);
-    let lastProgress = 0;
-    let retryCount = 0;
-    const maxRetries = 3;
-
-    while (!uploader.isComplete) {
-      try {
-        const currentProgress = uploader.pctComplete;
-        if (currentProgress !== lastProgress && currentProgress % 25 === 0) {
-          logger.log('Upload progress', {
-            progress: currentProgress,
-          });
-          lastProgress = currentProgress;
-        }
-
-        await uploader.uploadChunk();
-        retryCount = 0; // Reset retry count on successful chunk
-      } catch (chunkError: any) {
-        retryCount++;
-        if (retryCount >= maxRetries) {
-          throw new Error(
-            `Failed to upload chunk after ${maxRetries} retries: ${chunkError?.message || 'Unknown error'}`
-          );
-        }
-
-        // Wait before retrying (exponential backoff)
-        await new Promise((resolve) => setTimeout(resolve, 1000 * retryCount));
-      }
-    }
-
-    logger.log('Upload complete', {
-      transactionId: transaction.id,
+    const { id } = await turboClient.uploadFile({
+      fileStreamFactory: () => buffer,
+      fileSizeFactory: () => buffer.length,
+      dataItemOpts: { tags },
     });
 
-    // Submit the transaction to ensure it's broadcast to the network
-    // This helps with cross-origin accessibility
-    try {
-      await arweave.transactions.post(transaction);
-    } catch (submitError: any) {
-      // Log but don't fail - the transaction might already be in the network
-      logger.warn('Transaction submission warning', {
-        error: submitError?.message,
-      });
-    }
-
-    return `ar://${transaction.id}`;
+    logger.log('Upload complete', { transactionId: id });
+    return `ar://${id}`;
   } catch (error: any) {
     logger.error('Error uploading to Arweave', {
       error: error?.message ?? 'Unknown error',

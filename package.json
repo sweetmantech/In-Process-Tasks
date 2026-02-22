@@ -14,7 +14,7 @@
     "@types/node": "^24.10.1",
     "@zoralabs/protocol-deployments": "^0.6.4",
     "ai": "^5.0.87",
-    "arweave": "^1.15.7",
+    "@ardrive/turbo-sdk": "^1.41.0",
     "multiformats": "^13.4.1",
     "telnyx": "^5.0.0",
     "trigger.dev": "4.3.2",
