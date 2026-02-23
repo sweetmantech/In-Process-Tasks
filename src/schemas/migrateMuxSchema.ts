@@ -6,7 +6,7 @@ import addressSchema from './addressSchema';
  */
 export const migrateMuxSchema = z.object({
   collectionAddress: addressSchema,
-  tokenIds: z.array(z.string()),
+  tokenId: z.string(),
   chainId: z.number().optional().default(base.id),
 });
 
