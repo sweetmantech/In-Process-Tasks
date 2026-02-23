@@ -9,6 +9,7 @@ import { prepareMetadataUpdates } from '../arweave/prepareMetadataUpdates';
 import { uploadMetadataBatch } from '../arweave/uploadMetadataBatch';
 import { updateTokenMetadataOnChain } from '../coinbase/updateTokenMetadataOnChain';
 import { deleteMuxAssetsBatch } from '../mux/deleteMuxAssetsBatch';
+import { transcodeVideosIfNeededBatch } from '../video/transcodeVideosIfNeededBatch';
 
 export interface MigrateMuxToArweaveInput {
   collectionAddress: Address;
@@ -106,8 +107,15 @@ export async function migrateMuxToArweave({
       uniqueVideos: videoMap.size,
     });
 
+    // Step 4.5: Transcode H.265 videos to H.264 MP4 before uploading
+    const transcodedMap = await transcodeVideosIfNeededBatch(videoMap);
+
+    logger.log('Step 4.5 completed: Codec check and transcode done', {
+      videos: transcodedMap.size,
+    });
+
     // Step 5: Upload videos to Arweave (deduplicated)
-    const uploadMap = await uploadVideosToArweaveBatch(videoMap);
+    const uploadMap = await uploadVideosToArweaveBatch(transcodedMap);
 
     logger.log('Step 5 completed: Videos uploaded to Arweave', {
       uniqueUploads: uploadMap.size,
