@@ -67,7 +67,8 @@ export async function transcodeIfH265(videoFile: File): Promise<File> {
     const transcodeSeconds = ((Date.now() - transcodeStart) / 1000).toFixed(2);
 
     const transcodedBuffer = await fs.readFile(outputPath);
-    const transcodedFile = new File([transcodedBuffer], videoFile.name, {
+    const transcodedName = videoFile.name.replace(/\.[^.]+$/, '.mp4');
+    const transcodedFile = new File([transcodedBuffer], transcodedName, {
       type: 'video/mp4',
     });
 
