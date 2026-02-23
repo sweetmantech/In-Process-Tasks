@@ -68,13 +68,13 @@ export async function migrateMuxToArweave({
   // Step 4.5: Transcode H.265 → H.264 if needed
   const transcodedFile = await transcodeIfH265(videoFile);
 
-  logger.log('Step 4.5 completed: Codec check and transcode done');
+  logger.log('Step 5 completed: Codec check and transcode done');
 
   // Step 5: Upload video to Arweave
   const arweaveUri = await uploadToArweave(transcodedFile);
   if (!arweaveUri) throw new Error('Failed to upload video to Arweave');
 
-  logger.log('Step 5 completed: Video uploaded to Arweave', { arweaveUri });
+  logger.log('Step 6 completed: Video uploaded to Arweave', { arweaveUri });
 
   // Step 6: Build updated metadata
   const mimeType = metadata.content?.mime || transcodedFile.type || 'video/mp4';
@@ -84,12 +84,12 @@ export async function migrateMuxToArweave({
     content: { mime: mimeType, uri: arweaveUri },
   };
 
-  logger.log('Step 6 completed: Metadata updated');
+  logger.log('Step 7 completed: Metadata updated');
 
   // Step 7: Upload updated metadata to Arweave
   const metadataUri = await uploadJson(updatedMetadata);
 
-  logger.log('Step 7 completed: Metadata uploaded to Arweave', { metadataUri });
+  logger.log('Step 8 completed: Metadata uploaded to Arweave', { metadataUri });
 
   // Step 8: Update token metadata on-chain
   const transactionHash = await updateMomentMetadata(
@@ -101,7 +101,7 @@ export async function migrateMuxToArweave({
     metadata
   );
 
-  logger.log('Step 8 completed: Token metadata updated on-chain', {
+  logger.log('Step 9 completed: Token metadata updated on-chain', {
     transactionHash,
   });
 
@@ -110,7 +110,7 @@ export async function migrateMuxToArweave({
     const assetId = await findMuxAssetIdFromPlaybackUrl(playbackUrl);
     if (assetId) {
       await deleteMuxAsset(assetId);
-      logger.log('Step 9 completed: MUX asset deleted', { assetId });
+      logger.log('Step 10 completed: MUX asset deleted', { assetId });
     }
   }
 
