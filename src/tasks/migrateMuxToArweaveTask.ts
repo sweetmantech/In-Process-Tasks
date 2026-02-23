@@ -3,7 +3,7 @@ import {
   migrateMuxSchema,
   type MigrateMuxInput,
 } from '../schemas/migrateMuxSchema';
-import { migrateMuxToArweave } from './migrateMuxToArweave';
+import { migrateMuxToArweave } from '../moment/migrateMuxToArweave';
 import addressSchema from '../schemas/addressSchema';
 
 type TaskPayload = MigrateMuxInput & {
@@ -25,13 +25,12 @@ export const migrateMuxToArweaveTask = schemaTask({
     try {
       const result = await migrateMuxToArweave({
         collectionAddress: payload.collectionAddress as `0x${string}`,
-        tokenIds: payload.tokenIds,
+        tokenId: payload.tokenId,
         chainId: payload.chainId,
         artistAddress: payload.artistAddress as `0x${string}`,
       });
       logger.log('Migration completed', {
         transactionHash: result.transactionHash,
-        tokensMigrated: result.results.length,
       });
       return result;
     } catch (error: any) {
