@@ -1,6 +1,6 @@
 const fetchMetadata = async (uri: string) => {
   const response = await fetch(
-    `https://api.inprocess.world/api/moment/metadata?uri=${encodeURIComponent(uri)}`
+    `https://api.inprocess.world/api/metadata?uri=${encodeURIComponent(uri)}`
   );
 
   if (!response.ok) throw new Error('failed to get metadata.');
