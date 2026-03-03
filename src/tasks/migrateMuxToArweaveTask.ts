@@ -18,7 +18,7 @@ export const migrateMuxToArweaveTask = schemaTask({
   machine: 'micro',
   retry: {
     outOfMemory: {
-      machine: 'medium-2x',
+      machine: 'small-2x',
     },
   },
   run: async (payload: TaskPayload) => {
