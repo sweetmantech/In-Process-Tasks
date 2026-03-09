@@ -9,6 +9,7 @@ export const processMessageMomentTask = schemaTask({
   id: 'process-message-moment',
   schema: processMessageMomentSchema,
   machine: 'micro',
+  maxDuration: 600,
   run: async (payload: ProcessMessageMomentPayload) => {
     try {
       logger.log('Processing message moment', {
