@@ -109,7 +109,7 @@ export async function migrateMuxToArweave({
   if (playbackUrl) {
     const assetId = await findMuxAssetIdFromPlaybackUrl(playbackUrl);
     if (assetId) {
-      await wait.for({ minutes: 3 });
+      await wait.for({ minutes: 1 });
       await deleteMuxAsset(assetId);
       logger.log('Step 10 completed: MUX asset deleted', { assetId });
     }
