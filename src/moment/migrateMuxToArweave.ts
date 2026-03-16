@@ -1,4 +1,4 @@
-import { logger } from '@trigger.dev/sdk/v3';
+import { logger, wait } from '@trigger.dev/sdk/v3';
 import { Address } from 'viem';
 import getUri from '../viem/getUri';
 import { downloadVideo } from '../mux/downloadVideo';
@@ -105,10 +105,11 @@ export async function migrateMuxToArweave({
     transactionHash,
   });
 
-  // Step 9: Delete MUX asset
+  // Step 9: Delete MUX asset after grace period so active clients can switch to Arweave URL
   if (playbackUrl) {
     const assetId = await findMuxAssetIdFromPlaybackUrl(playbackUrl);
     if (assetId) {
+      await wait.for({ minutes: 1 });
       await deleteMuxAsset(assetId);
       logger.log('Step 10 completed: MUX asset deleted', { assetId });
     }
