@@ -1,4 +1,4 @@
-import { logger, schemaTask } from '@trigger.dev/sdk/v3';
+import { logger, schemaTask, wait } from '@trigger.dev/sdk/v3';
 import {
   processMessageMomentSchema,
   type ProcessMessageMomentPayload,
@@ -16,6 +16,7 @@ export const processMessageMomentTask = schemaTask({
         messageId: payload.messageId,
       });
 
+      await wait.for({ seconds: 30 });
       await processMessageMoment(payload.messageId);
 
       return { success: true, messageId: payload.messageId };
