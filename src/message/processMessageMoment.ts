@@ -1,4 +1,4 @@
-import { logger } from '@trigger.dev/sdk';
+import { logger, wait } from '@trigger.dev/sdk';
 import indexMessageMoment from './indexMessageMoment';
 
 const processMessageMoment = async (messageId: string) => {
@@ -33,7 +33,7 @@ const processMessageMoment = async (messageId: string) => {
       });
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await wait.for({ seconds: 3 });
   }
 };
 
