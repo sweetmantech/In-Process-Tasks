@@ -1,10 +1,15 @@
 import { retry } from '@trigger.dev/sdk/v3';
 import { TokenMetadataJson } from '../ipfs/types';
 
-const fetchMetadata = async (uri: string): Promise<TokenMetadataJson> => {
+const getMetadata = async (uri: string): Promise<TokenMetadataJson> => {
   const response = await retry.fetch(
-    `https://api.inprocess.world/api/metadata?uri=${encodeURIComponent(uri)}`,
+    'https://api.inprocess.world/api/metadata',
     {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ uri }),
       timeoutInMs: 30_000,
       retry: {
         timeout: {
@@ -43,4 +48,4 @@ const fetchMetadata = async (uri: string): Promise<TokenMetadataJson> => {
   return data as TokenMetadataJson;
 };
 
-export default fetchMetadata;
+export default getMetadata;

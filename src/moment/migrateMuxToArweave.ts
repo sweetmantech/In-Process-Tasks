@@ -9,7 +9,7 @@ import { updateMomentMetadata } from '../moment/updateMomentMetadata';
 import { findMuxAssetIdFromPlaybackUrl } from '../mux/findMuxAssetIdFromPlaybackUrl';
 import { deleteMuxAsset } from '../mux/deleteMuxAsset';
 import { TokenMetadataJson } from '../ipfs/types';
-import fetchMetadata from './fetchMetadata';
+import getMetadata from './getMetadata';
 
 export interface MigrateMuxToArweaveInput {
   collectionAddress: Address;
@@ -40,7 +40,7 @@ export async function migrateMuxToArweave({
   logger.log('Step 1 completed: Token URI identified');
 
   // Step 2: Fetch metadata
-  const metadata = await fetchMetadata(tokenUri);
+  const metadata = await getMetadata(tokenUri);
   if (!metadata)
     throw new Error(`Failed to fetch metadata for token ${tokenId}`);
 
