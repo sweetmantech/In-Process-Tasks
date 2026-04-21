@@ -1,39 +1,19 @@
 import { logger } from '@trigger.dev/sdk/v3';
-import ffmpeg from 'fluent-ffmpeg';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { probeVideo } from './probeVideo';
+import { transcodeToH264 } from './transcodeToH264';
 
 // ffmpeg/ffprobe are installed as system binaries via the ffmpeg() build
 // extension in trigger.config.ts — fluent-ffmpeg finds them via PATH.
 
-function probeVideoCodec(filePath: string): Promise<string | null> {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(filePath, (err, data) => {
-      if (err) return reject(err);
-      const videoStream = data.streams.find((s) => s.codec_type === 'video');
-      resolve(videoStream?.codec_name ?? null);
-    });
-  });
-}
-
-function transcodeToH264(inputPath: string, outputPath: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    ffmpeg(inputPath)
-      .videoCodec('libx264')
-      .audioCodec('aac')
-      .outputOptions(['-crf 23', '-preset fast', '-movflags +faststart'])
-      .output(outputPath)
-      .on('end', () => resolve())
-      .on('error', (err) => reject(err))
-      .run();
-  });
-}
-
 /**
- * Detects the video codec of a File object using ffprobe.
- * If the codec is H.265 (hevc), transcodes it to H.264 MP4 and returns
- * the new File. Otherwise returns the original File unchanged.
+ * Inspects the video with ffprobe and transcodes to H.264 if:
+ *  - codec is H.265 (hevc), or
+ *  - codec is H.264 with no B-frames and size > 50 MB
+ *
+ * Otherwise returns the original File unchanged.
  */
 export async function transcodeIfH265(videoFile: File): Promise<File> {
   const id = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -41,24 +21,25 @@ export async function transcodeIfH265(videoFile: File): Promise<File> {
   const outputPath = join(tmpdir(), `transcode-output-${id}.mp4`);
 
   try {
-    // Write File buffer to disk so ffprobe/ffmpeg can read it
     const buffer = Buffer.from(await videoFile.arrayBuffer());
     await fs.writeFile(inputPath, buffer);
 
-    const codec = await probeVideoCodec(inputPath);
+    const probe = await probeVideo(inputPath);
 
-    logger.log('Video codec detected', {
+    logger.log('Video probe result', {
       fileName: videoFile.name,
-      codec,
+      codec: probe.codec,
+      needsReencode: probe.needsReencode,
+      reason: probe.reason,
     });
 
-    if (codec !== 'hevc') {
-      logger.log('No transcode needed', { fileName: videoFile.name, codec });
+    if (!probe.needsReencode) {
       return videoFile;
     }
 
-    logger.log('H.265 detected, transcoding to H.264', {
+    logger.log('Transcoding to H.264', {
       fileName: videoFile.name,
+      reason: probe.reason,
       fileSizeMB: (videoFile.size / (1024 * 1024)).toFixed(2),
     });
 
