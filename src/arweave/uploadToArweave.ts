@@ -34,6 +34,8 @@ const uploadToArweave = async (file: File): Promise<string> => {
       dataItemOpts: { tags },
     });
 
+    if (!id) throw new Error('Arweave upload returned no transaction ID');
+
     logger.log('Upload complete', { transactionId: id });
     return `ar://${id}`;
   } catch (error: any) {
