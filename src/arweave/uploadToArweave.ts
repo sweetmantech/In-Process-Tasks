@@ -4,7 +4,7 @@ import patchFetch from './patchFetch';
 import { logger, retry } from '@trigger.dev/sdk/v3';
 
 const uploadRetryOptions = {
-  maxAttempts: 5,
+  maxAttempts: 3,
   factor: 2,
   minTimeoutInMs: 2_000,
   maxTimeoutInMs: 60_000,
@@ -32,6 +32,7 @@ export const uploadToArweave = async (file: File): Promise<string> => {
       }
 
       const { id } = await turboClient.uploadFile({
+        chunkingMode: 'disabled',
         fileStreamFactory: () => Readable.from(Buffer.from(uint8Array)),
         fileSizeFactory: () => file.size,
         dataItemOpts: {
@@ -43,7 +44,9 @@ export const uploadToArweave = async (file: File): Promise<string> => {
       });
 
       if (!id) {
-        throw new Error('Failed to upload file to Arweave');
+        throw new Error(
+          'Failed to upload file to Arweave (missing id in response)'
+        );
       }
       const arweaveURI = `ar://${id}`;
       logger.log('Upload complete', { arweaveURI });
