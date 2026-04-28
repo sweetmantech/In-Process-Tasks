@@ -1,7 +1,15 @@
 import { Readable } from 'stream';
 import turboClient from './turboClient';
 import patchFetch from './patchFetch';
-import { logger } from '@trigger.dev/sdk';
+import { logger, retry } from '@trigger.dev/sdk/v3';
+
+const uploadRetryOptions = {
+  maxAttempts: 5,
+  factor: 2,
+  minTimeoutInMs: 2_000,
+  maxTimeoutInMs: 60_000,
+  randomize: true,
+} as const;
 
 export const uploadToArweave = async (file: File): Promise<string> => {
   const uint8Array = new Uint8Array(await file.arrayBuffer());
@@ -14,23 +22,33 @@ export const uploadToArweave = async (file: File): Promise<string> => {
   });
 
   try {
-    const { id } = await turboClient.uploadFile({
-      fileStreamFactory: () => Readable.from(Buffer.from(uint8Array)),
-      fileSizeFactory: () => file.size,
-      dataItemOpts: {
-        tags: [
-          { name: 'Content-Type', value: file.type },
-          { name: 'File-Name', value: file.name },
-        ],
-      },
-    });
+    return await retry.onThrow(async ({ attempt, maxAttempts }) => {
+      if (attempt > 1) {
+        logger.log('Retrying Arweave upload', {
+          attempt,
+          maxAttempts,
+          fileName: file.name,
+        });
+      }
 
-    if (!id) {
-      throw new Error('Failed to upload file to Arweave');
-    }
-    const arweaveURI = `ar://${id}`;
-    logger.log('Upload complete', { arweaveURI });
-    return arweaveURI;
+      const { id } = await turboClient.uploadFile({
+        fileStreamFactory: () => Readable.from(Buffer.from(uint8Array)),
+        fileSizeFactory: () => file.size,
+        dataItemOpts: {
+          tags: [
+            { name: 'Content-Type', value: file.type },
+            { name: 'File-Name', value: file.name },
+          ],
+        },
+      });
+
+      if (!id) {
+        throw new Error('Failed to upload file to Arweave');
+      }
+      const arweaveURI = `ar://${id}`;
+      logger.log('Upload complete', { arweaveURI });
+      return arweaveURI;
+    }, uploadRetryOptions);
   } finally {
     restoreFetch();
   }
