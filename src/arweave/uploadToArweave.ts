@@ -32,7 +32,6 @@ export const uploadToArweave = async (file: File): Promise<string> => {
       }
 
       const { id } = await turboClient.uploadFile({
-        chunkingMode: 'disabled',
         fileStreamFactory: () => Readable.from(Buffer.from(uint8Array)),
         fileSizeFactory: () => file.size,
         dataItemOpts: {
@@ -41,6 +40,7 @@ export const uploadToArweave = async (file: File): Promise<string> => {
             { name: 'File-Name', value: file.name },
           ],
         },
+        chunkingMode: 'disabled',
       });
 
       if (!id) {
