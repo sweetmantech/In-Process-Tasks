@@ -1,6 +1,6 @@
-// The Turbo web SDK passes ReadableStream as fetch body which browsers mark as
-// "disturbed" after the first read. Intercept those calls and convert to Blob
-// so the body can be reused across SDK retries.
+// Turbo may send request bodies as ReadableStream. Streams are single-use; if fetch
+// is retried the body can fail on the second attempt. Normalize to Blob (buffered)
+// so retries reuse the same bytes. Applies to Node fetch (undici), not only browsers.
 
 // Module-scoped state so concurrent callers share one patch and one restore.
 let baseOriginalFetch: typeof globalThis.fetch | null = null;
