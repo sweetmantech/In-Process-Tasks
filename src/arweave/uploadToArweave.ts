@@ -25,6 +25,9 @@ export const uploadToArweave = async (file: File): Promise<string> => {
       },
     });
 
+    if (!id) {
+      throw new Error('Failed to upload file to Arweave');
+    }
     const arweaveURI = `ar://${id}`;
     logger.log('Upload complete', { arweaveURI });
     return arweaveURI;
