@@ -1,48 +1,59 @@
-import { logger } from '@trigger.dev/sdk';
-import { TurboFactory } from '@ardrive/turbo-sdk';
+import { Readable } from 'stream';
+import turboClient from './turboClient';
+import patchFetch from './patchFetch';
+import { logger, retry } from '@trigger.dev/sdk/v3';
 
-const uploadToArweave = async (file: File): Promise<string> => {
+const uploadRetryOptions = {
+  maxAttempts: 3,
+  factor: 2,
+  minTimeoutInMs: 2_000,
+  maxTimeoutInMs: 60_000,
+  randomize: true,
+} as const;
+
+export const uploadToArweave = async (file: File): Promise<string> => {
+  const uint8Array = new Uint8Array(await file.arrayBuffer());
+  const restoreFetch = patchFetch();
+
+  logger.log('Starting upload', {
+    fileSizeMB: (file.size / (1024 * 1024)).toFixed(2),
+    fileName: file.name,
+    fileType: file.type,
+  });
+
   try {
-    const ARWEAVE_KEY = JSON.parse(
-      Buffer.from(process.env.ARWEAVE_KEY as string, 'base64').toString()
-    );
+    return await retry.onThrow(async ({ attempt, maxAttempts }) => {
+      if (attempt > 1) {
+        logger.log('Retrying Arweave upload', {
+          attempt,
+          maxAttempts,
+          fileName: file.name,
+        });
+      }
 
-    logger.log('Starting upload', {
-      fileSizeMB: (file.size / (1024 * 1024)).toFixed(2),
-      fileName: file.name,
-      fileType: file.type,
-    });
+      const { id } = await turboClient.uploadFile({
+        fileStreamFactory: () => Readable.from(Buffer.from(uint8Array)),
+        fileSizeFactory: () => file.size,
+        dataItemOpts: {
+          tags: [
+            { name: 'Content-Type', value: file.type },
+            { name: 'File-Name', value: file.name },
+          ],
+        },
+        chunkingMode: 'disabled',
+      });
 
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const turboClient = TurboFactory.authenticated({ privateKey: ARWEAVE_KEY });
-
-    const tags = [
-      { name: 'Content-Type', value: file.type },
-      { name: 'App-Name', value: 'In-Process-Tasks' },
-      { name: 'App-Version', value: '1.0.0' },
-    ];
-
-    if (file.name) {
-      tags.push({ name: 'File-Name', value: file.name });
-    }
-
-    const { id } = await turboClient.uploadFile({
-      fileStreamFactory: () => buffer,
-      fileSizeFactory: () => buffer.length,
-      dataItemOpts: { tags },
-    });
-
-    if (!id) throw new Error('Arweave upload returned no transaction ID');
-
-    logger.log('Upload complete', { transactionId: id });
-    return `ar://${id}`;
-  } catch (error: any) {
-    logger.error('Error uploading to Arweave', {
-      error: error?.message ?? 'Unknown error',
-    });
-    throw new Error(`Error uploading to Arweave: ${error.message}`);
+      if (!id) {
+        throw new Error(
+          'Failed to upload file to Arweave (missing id in response)'
+        );
+      }
+      const arweaveURI = `ar://${id}`;
+      logger.log('Upload complete', { arweaveURI });
+      return arweaveURI;
+    }, uploadRetryOptions);
+  } finally {
+    restoreFetch();
   }
 };
 
