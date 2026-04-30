@@ -1,17 +1,23 @@
 import { retry } from '@trigger.dev/sdk/v3';
 
-/** First N bytes (inclusive last index = length - 1). ~8 KiB: cheap but exercises a bit more than a single byte. */
-const PROBE_PREFIX_LENGTH = 8192;
+/** JSON / small asset probes (metadata). */
+export const PROBE_PREFIX_BYTES_DEFAULT = 8192;
+
+/** Video stream probes — enough prefix to exercise sustained read path. */
+export const PROBE_PREFIX_BYTES_VIDEO = 5 * 1024 * 1024;
 
 /**
  * True if GET with Range for an initial prefix returns 200 or 206.
  * Uses no-store / no-cache so probes are not satisfied from a stale HTTP cache while the tx propagates.
- * Still not full-file proof; stronger than a 1-byte probe for “stream starts here”.
  */
 export async function probeReadableWithRangePrefix(
-  url: string
+  url: string,
+  prefixLengthBytes: number = PROBE_PREFIX_BYTES_DEFAULT
 ): Promise<boolean> {
-  const last = PROBE_PREFIX_LENGTH - 1;
+  const n = Math.max(1, Math.floor(prefixLengthBytes));
+  const last = n - 1;
+  const timeoutInMs = n >= 1024 * 1024 ? 120_000 : 30_000;
+
   try {
     const res = await retry.fetch(url, {
       method: 'GET',
@@ -21,7 +27,7 @@ export async function probeReadableWithRangePrefix(
         'Cache-Control': 'no-cache',
         Pragma: 'no-cache',
       },
-      timeoutInMs: 30_000,
+      timeoutInMs,
       retry: {
         timeout: {
           maxAttempts: 3,
