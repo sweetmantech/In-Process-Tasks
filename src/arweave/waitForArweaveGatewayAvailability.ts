@@ -4,9 +4,13 @@ import {
   probeReadableWithRangePrefix,
   PROBE_PREFIX_BYTES_DEFAULT,
 } from './probeReadableWithRangePrefix';
+import { seedMediaStreamCacheRangePrefix } from './seedMediaStreamCacheRangePrefix';
 
 /**
  * Blocks until `api.inprocess.world/api/media/stream?url=ar://…` can serve the asset (Range probe).
+ * Each successful probe uses no-store so stale cache is not mistaken for availability.
+ * After the first hit, runs a cache-allowing GET for the same Range so Vercel Edge can fill
+ * that single prefix entry (not the whole file or other seek ranges).
  * If all sweeps fail, returns without throwing (migration continues at caller’s risk).
  * Other errors from the probe path still propagate.
  */
@@ -60,6 +64,7 @@ export async function waitForArweaveGatewayAvailability(
             sweep,
             elapsedMs: Date.now() - globalStarted,
           });
+          await seedMediaStreamCacheRangePrefix(probeUrl, probePrefixBytes);
           return;
         }
 

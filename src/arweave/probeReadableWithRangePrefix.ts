@@ -8,7 +8,9 @@ export const PROBE_PREFIX_BYTES_VIDEO = 5 * 1024 * 1024;
 
 /**
  * True if GET with Range for an initial prefix returns 200 or 206.
- * Uses no-store / no-cache so probes are not satisfied from a stale HTTP cache while the tx propagates.
+ * Uses no-store / no-cache so availability checks never treat a stale edge cache as "ready"
+ * while the Arweave tx propagates. After a hit, call {@link seedMediaStreamCacheRangePrefix} if
+ * you want a cache-allowing repeat of the same Range for CDN fill.
  */
 export async function probeReadableWithRangePrefix(
   url: string,
