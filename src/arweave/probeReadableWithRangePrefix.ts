@@ -5,7 +5,8 @@ const PROBE_PREFIX_LENGTH = 8192;
 
 /**
  * True if GET with Range for an initial prefix returns 200 or 206.
- * Still a heuristic (not full-file proof); stronger than a 1-byte probe for “stream starts here”.
+ * Uses no-store / no-cache so probes are not satisfied from a stale HTTP cache while the tx propagates.
+ * Still not full-file proof; stronger than a 1-byte probe for “stream starts here”.
  */
 export async function probeReadableWithRangePrefix(
   url: string
@@ -14,7 +15,12 @@ export async function probeReadableWithRangePrefix(
   try {
     const res = await retry.fetch(url, {
       method: 'GET',
-      headers: { Range: `bytes=0-${last}` },
+      cache: 'no-store',
+      headers: {
+        Range: `bytes=0-${last}`,
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      },
       timeoutInMs: 30_000,
       retry: {
         timeout: {
