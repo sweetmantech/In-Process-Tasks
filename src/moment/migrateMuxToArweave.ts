@@ -42,6 +42,8 @@ export async function migrateMuxToArweave({
 
   // Step 2: Fetch metadata
   const metadata = await getMetadata(tokenUri);
+  if (!metadata)
+    throw new Error(`Failed to fetch metadata for token ${tokenId}`);
 
   logger.log('Step 2 completed: Metadata fetched');
 
