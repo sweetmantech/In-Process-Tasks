@@ -1,12 +1,10 @@
 import { logger, retry, wait } from '@trigger.dev/sdk/v3';
-import { getStreamingUrl } from './getStreamingUrl';
-import {
-  probeReadableWithRangePrefix,
-  PROBE_PREFIX_BYTES_DEFAULT,
-} from './probeReadableWithRangePrefix';
+import { arweaveTxIdFromUri } from './arweaveTxIdFromUri';
+import { probeReadableWithRangePrefix } from './probeReadableWithRangePrefix';
+import { turboGatewayUrlForTxId } from './turboGatewayUrlForTxId';
 
 /**
- * Blocks until `api.inprocess.world/api/media/stream?url=ar://…` can serve the asset (Range probe).
+ * Blocks until turbo-gateway.com can serve the transaction.
  * If all sweeps fail, returns without throwing (migration continues at caller’s risk).
  * Other errors from the probe path still propagate.
  */
@@ -21,8 +19,6 @@ export async function waitForArweaveGatewayAvailability(
     cooldownAfterSweepSeconds?: number;
     /** How many full polling sweeps to run (each sweep uses maxWaitMs + poll interval logic). Default 3. */
     maxSweeps?: number;
-    /** Range probe byte length. Pass `PROBE_PREFIX_BYTES_VIDEO` for video; omit for small metadata JSON (8 KiB). */
-    probePrefixBytes?: number;
   }
 ): Promise<void> {
   const maxWaitMs = options?.maxWaitMs ?? 10 * 60_000;
@@ -30,10 +26,8 @@ export async function waitForArweaveGatewayAvailability(
   const pollIntervalMs = pollIntervalSeconds * 1000;
   const cooldownAfterSweepSeconds = options?.cooldownAfterSweepSeconds ?? 180;
   const maxSweeps = options?.maxSweeps ?? 3;
-  const probePrefixBytes =
-    options?.probePrefixBytes ?? PROBE_PREFIX_BYTES_DEFAULT;
 
-  const probeUrl = getStreamingUrl(arweaveUri);
+  const txId = arweaveTxIdFromUri(arweaveUri);
   const globalStarted = Date.now();
   const maxAttempts = Math.max(1, Math.ceil(maxWaitMs / pollIntervalMs) + 1);
 
@@ -48,13 +42,11 @@ export async function waitForArweaveGatewayAvailability(
   for (let sweep = 1; sweep <= maxSweeps; sweep++) {
     try {
       await retry.onThrow(async ({ attempt, maxAttempts: attemptCap }) => {
-        const hit = await probeReadableWithRangePrefix(
-          probeUrl,
-          probePrefixBytes
-        );
+        const url = turboGatewayUrlForTxId(txId);
+        const hit = await probeReadableWithRangePrefix(url);
 
         if (hit) {
-          logger.log('Arweave asset reachable via InProcess media stream', {
+          logger.log('Arweave asset reachable via turbo-gateway.com', {
             arweaveUri,
             attempt,
             sweep,
@@ -63,7 +55,7 @@ export async function waitForArweaveGatewayAvailability(
           return;
         }
 
-        logger.log('Waiting for Arweave via InProcess media stream', {
+        logger.log('Waiting for Arweave propagation on turbo-gateway.com', {
           arweaveUri,
           attempt,
           maxAttempts: attemptCap,
@@ -75,13 +67,13 @@ export async function waitForArweaveGatewayAvailability(
       }, retryOptions);
 
       return;
-    } catch {
+    } catch (e) {
       if (sweep >= maxSweeps) {
         return;
       }
 
       logger.log(
-        'Media stream probe sweep finished without success; cooldown before next sweep',
+        'Gateway sweep finished without success; cooldown before next sweep',
         {
           arweaveUri,
           sweep,

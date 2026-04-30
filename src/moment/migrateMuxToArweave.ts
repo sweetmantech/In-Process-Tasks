@@ -5,7 +5,6 @@ import { downloadVideo } from '../mux/downloadVideo';
 import { transcodeIfH265 } from '../video/transcodeIfH265';
 import uploadToArweave from '../arweave/uploadToArweave';
 import { uploadJson } from '../arweave/uploadJson';
-import { PROBE_PREFIX_BYTES_VIDEO } from '../arweave/probeReadableWithRangePrefix';
 import { waitForArweaveGatewayAvailability } from '../arweave/waitForArweaveGatewayAvailability';
 import { updateMomentMetadata } from '../moment/updateMomentMetadata';
 import { findMuxAssetIdFromPlaybackUrl } from '../mux/findMuxAssetIdFromPlaybackUrl';
@@ -92,28 +91,23 @@ export async function migrateMuxToArweave({
     metadataUri,
   });
 
-  // Step 8: Wait until InProcess media stream can serve both ar:// URIs (parallel)
-  logger.log('Step 8: Waiting for InProcess media stream (video + metadata)', {
+  // Step 8: Wait until turbo-gateway can serve both assets (parallel)
+  logger.log('Step 8: Waiting for gateway propagation (video + metadata)', {
     arweaveUri,
     metadataUri,
   });
 
   await Promise.all([
-    waitForArweaveGatewayAvailability(arweaveUri, {
-      probePrefixBytes: PROBE_PREFIX_BYTES_VIDEO,
-    }),
+    waitForArweaveGatewayAvailability(arweaveUri),
     waitForArweaveGatewayAvailability(metadataUri),
   ]);
 
-  logger.log(
-    'Step 8 completed: InProcess media stream ready (or sweeps exhausted)',
-    {
-      arweaveUri,
-      metadataUri,
-    }
-  );
+  logger.log('Step 9 completed: Gateway wait finished for video and metadata', {
+    arweaveUri,
+    metadataUri,
+  });
 
-  // Step 9: Update token metadata onchain
+  // Step 9: Update token metadata on-chain
   const transactionHash = await updateMomentMetadata(
     collectionAddress,
     tokenId,
@@ -123,7 +117,7 @@ export async function migrateMuxToArweave({
     metadata
   );
 
-  logger.log('Step 9 completed: Token metadata updated onchain', {
+  logger.log('Step 10 completed: Token metadata updated on-chain', {
     transactionHash,
   });
 
