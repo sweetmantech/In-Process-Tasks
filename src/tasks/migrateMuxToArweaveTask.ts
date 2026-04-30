@@ -33,10 +33,11 @@ export const migrateMuxToArweaveTask = schemaTask({
         transactionHash: result.transactionHash,
       });
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error migrating MUX to Arweave', {
-        error: error?.message ?? 'Unknown error',
+        error: error instanceof Error ? error.message : String(error),
       });
+      throw error;
     }
   },
 });

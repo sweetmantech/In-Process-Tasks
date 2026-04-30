@@ -5,6 +5,7 @@ import { downloadVideo } from '../mux/downloadVideo';
 import { transcodeIfH265 } from '../video/transcodeIfH265';
 import uploadToArweave from '../arweave/uploadToArweave';
 import { uploadJson } from '../arweave/uploadJson';
+import { waitForArweaveGatewayAvailability } from '../arweave/waitForArweaveGatewayAvailability';
 import { updateMomentMetadata } from '../moment/updateMomentMetadata';
 import { findMuxAssetIdFromPlaybackUrl } from '../mux/findMuxAssetIdFromPlaybackUrl';
 import { deleteMuxAsset } from '../mux/deleteMuxAsset';
@@ -41,8 +42,6 @@ export async function migrateMuxToArweave({
 
   // Step 2: Fetch metadata
   const metadata = await getMetadata(tokenUri);
-  if (!metadata)
-    throw new Error(`Failed to fetch metadata for token ${tokenId}`);
 
   logger.log('Step 2 completed: Metadata fetched');
 
@@ -74,6 +73,10 @@ export async function migrateMuxToArweave({
   const arweaveUri = await uploadToArweave(transcodedFile);
   if (!arweaveUri) throw new Error('Failed to upload video to Arweave');
 
+  // Gateways often lag the bundler; wait until the asset is actually fetchable before
+  // publishing metadata / on-chain URIs clients will resolve immediately.
+  await waitForArweaveGatewayAvailability(arweaveUri);
+
   logger.log('Step 6 completed: Video uploaded to Arweave', { arweaveUri });
 
   // Step 6: Build updated metadata
@@ -88,6 +91,8 @@ export async function migrateMuxToArweave({
 
   // Step 7: Upload updated metadata to Arweave
   const metadataUri = await uploadJson(updatedMetadata);
+
+  await waitForArweaveGatewayAvailability(metadataUri);
 
   logger.log('Step 8 completed: Metadata uploaded to Arweave', { metadataUri });
 
