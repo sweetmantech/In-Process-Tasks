@@ -91,6 +91,11 @@ export async function migrateMuxToArweave({
 
   logger.log('Step 8 completed: Metadata uploaded to Arweave', { metadataUri });
 
+  logger.log(
+    'Waiting for 10 minutes while 3 arweave blocks are fully propagated'
+  );
+  await wait.for({ minutes: 10 });
+
   // Step 8: Update token metadata on-chain
   const transactionHash = await updateMomentMetadata(
     collectionAddress,
