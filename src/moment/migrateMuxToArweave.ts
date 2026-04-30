@@ -92,21 +92,17 @@ export async function migrateMuxToArweave({
     metadataUri,
   });
 
-  // Step 8: Wait until InProcess media stream can serve both ar:// URIs (parallel)
-  logger.log('Step 8: Waiting for InProcess media stream (video + metadata)', {
+  // Step 8: Media stream readiness for playback — video only (`metadataUri` is not validated via `/api/media/stream`).
+  logger.log('Step 8: Waiting for InProcess media stream (video only)', {
     arweaveUri,
-    metadataUri,
   });
 
-  await Promise.all([
-    waitForArweaveGatewayAvailability(arweaveUri, {
-      probePrefixBytes: PROBE_PREFIX_BYTES_VIDEO,
-    }),
-    waitForArweaveGatewayAvailability(metadataUri),
-  ]);
+  await waitForArweaveGatewayAvailability(arweaveUri, {
+    probePrefixBytes: PROBE_PREFIX_BYTES_VIDEO,
+  });
 
   logger.log(
-    'Step 8 completed: InProcess media stream ready (or sweeps exhausted)',
+    'Step 8 completed: InProcess media stream ready for video (or sweeps exhausted)',
     {
       arweaveUri,
       metadataUri,
