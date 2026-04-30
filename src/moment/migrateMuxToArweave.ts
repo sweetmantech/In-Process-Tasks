@@ -64,22 +64,18 @@ export async function migrateMuxToArweave({
 
   logger.log('Step 4 completed: Video downloaded');
 
-  // Step 4.5: Transcode H.265 → H.264 if needed
+  // Step 5: Transcode H.265 → H.264 if needed
   const transcodedFile = await transcodeIfH265(videoFile);
 
   logger.log('Step 5 completed: Codec check and transcode done');
 
-  // Step 5: Upload video to Arweave
+  // Step 6: Upload video to Arweave
   const arweaveUri = await uploadToArweave(transcodedFile);
   if (!arweaveUri) throw new Error('Failed to upload video to Arweave');
 
-  // Gateways often lag the bundler; wait until the asset is actually fetchable before
-  // publishing metadata / on-chain URIs clients will resolve immediately.
-  await waitForArweaveGatewayAvailability(arweaveUri);
-
   logger.log('Step 6 completed: Video uploaded to Arweave', { arweaveUri });
 
-  // Step 6: Build updated metadata
+  // Step 7: Build updated metadata and upload JSON to Arweave
   const mimeType = metadata.content?.mime || transcodedFile.type || 'video/mp4';
   const updatedMetadata: TokenMetadataJson = {
     ...metadata,
@@ -87,16 +83,29 @@ export async function migrateMuxToArweave({
     content: { mime: mimeType, uri: arweaveUri },
   };
 
-  logger.log('Step 7 completed: Metadata updated');
-
-  // Step 7: Upload updated metadata to Arweave
   const metadataUri = await uploadJson(updatedMetadata);
 
-  await waitForArweaveGatewayAvailability(metadataUri);
+  logger.log('Step 7 completed: Metadata JSON uploaded to Arweave', {
+    metadataUri,
+  });
 
-  logger.log('Step 8 completed: Metadata uploaded to Arweave', { metadataUri });
+  // Step 8: Wait until turbo-gateway can serve both assets (parallel)
+  logger.log('Step 8: Waiting for gateway propagation (video + metadata)', {
+    arweaveUri,
+    metadataUri,
+  });
 
-  // Step 8: Update token metadata on-chain
+  await Promise.all([
+    waitForArweaveGatewayAvailability(arweaveUri),
+    waitForArweaveGatewayAvailability(metadataUri),
+  ]);
+
+  logger.log('Step 9 completed: Gateway wait finished for video and metadata', {
+    arweaveUri,
+    metadataUri,
+  });
+
+  // Step 9: Update token metadata on-chain
   const transactionHash = await updateMomentMetadata(
     collectionAddress,
     tokenId,
@@ -106,11 +115,11 @@ export async function migrateMuxToArweave({
     metadata
   );
 
-  logger.log('Step 9 completed: Token metadata updated on-chain', {
+  logger.log('Step 10 completed: Token metadata updated on-chain', {
     transactionHash,
   });
 
-  // Step 9: Delete MUX asset after grace period so active clients can switch to Arweave URL
+  // Step 10: Delete MUX asset after grace period so active clients can switch to Arweave URL
   if (playbackUrl) {
     const assetId = await findMuxAssetIdFromPlaybackUrl(playbackUrl);
     if (assetId) {
