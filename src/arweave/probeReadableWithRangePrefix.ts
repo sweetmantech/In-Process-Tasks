@@ -1,5 +1,4 @@
 import { retry } from '@trigger.dev/sdk/v3';
-import { discardResponseBody } from './discardResponseBody';
 
 /** JSON / small asset probes (metadata). */
 export const PROBE_PREFIX_BYTES_DEFAULT = 8192;
@@ -10,10 +9,8 @@ export const PROBE_PREFIX_BYTES_VIDEO = 5 * 1024 * 1024;
 /**
  * True if GET with Range for an initial prefix returns 200 or 206.
  * Uses no-store / no-cache so availability checks never treat a stale edge cache as "ready"
- * while the Arweave tx propagates. Drops the response body so the TCP/Undici connection is
- * not left mid-stream for a follow-up request (e.g. cache seed). After a hit, call
- * {@link seedMediaStreamCacheRangePrefix} if you want a cache-allowing repeat of the same
- * Range for CDN fill.
+ * while the Arweave tx propagates. After a hit, call {@link seedMediaStreamCacheRangePrefix} if
+ * you want a cache-allowing repeat of the same Range for CDN fill.
  */
 export async function probeReadableWithRangePrefix(
   url: string,
@@ -60,9 +57,7 @@ export async function probeReadableWithRangePrefix(
         },
       },
     });
-    const hit = res.ok || res.status === 206;
-    await discardResponseBody(res);
-    return hit;
+    return res.ok || res.status === 206;
   } catch {
     return false;
   }
