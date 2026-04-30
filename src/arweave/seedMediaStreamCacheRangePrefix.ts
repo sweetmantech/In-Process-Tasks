@@ -1,4 +1,5 @@
 import { logger, retry } from '@trigger.dev/sdk/v3';
+import { discardResponseBody } from './discardResponseBody';
 
 /**
  * Seeds CDN / edge caches with the initial-byte Range response for `streamUrl`.
@@ -38,6 +39,14 @@ export async function seedMediaStreamCacheRangePrefix(
           randomize: true,
         },
         byStatus: {
+          '404': {
+            strategy: 'backoff',
+            maxAttempts: 4,
+            factor: 1.5,
+            minTimeoutInMs: 300,
+            maxTimeoutInMs: 3_000,
+            randomize: true,
+          },
           '500-599': {
             strategy: 'backoff',
             maxAttempts: 3,
@@ -51,6 +60,7 @@ export async function seedMediaStreamCacheRangePrefix(
     });
 
     if (!res.ok && res.status !== 206) {
+      await discardResponseBody(res);
       return;
     }
 
