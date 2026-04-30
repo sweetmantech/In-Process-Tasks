@@ -96,7 +96,7 @@ export async function migrateMuxToArweave({
   );
   await wait.for({ minutes: 10 });
 
-  // Step 8: Update token metadata on-chain
+  // Step 8: Update token metadata onchain
   const transactionHash = await updateMomentMetadata(
     collectionAddress,
     tokenId,
@@ -106,7 +106,7 @@ export async function migrateMuxToArweave({
     metadata
   );
 
-  logger.log('Step 9 completed: Token metadata updated on-chain', {
+  logger.log('Step 9 completed: Token metadata updated onchain', {
     transactionHash,
   });
 

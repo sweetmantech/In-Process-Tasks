@@ -9,7 +9,7 @@ import getUpdateContractMetadataCall from '../viem/getUpdateContractMetadataCall
 import { TokenMetadataJson } from '../ipfs/types';
 
 /**
- * Updates a single token's metadata on-chain via smart wallet.
+ * Updates a single token's metadata onchain via smart wallet.
  * Uses updateContractMetadata for tokenId "0", updateTokenURI for all others.
  */
 export async function updateMomentMetadata(
@@ -46,7 +46,7 @@ export async function updateMomentMetadata(
     calls: [call],
   });
 
-  logger.log('Token metadata updated on-chain', {
+  logger.log('Token metadata updated onchain', {
     transactionHash: transaction.transactionHash,
     tokenId,
   });
