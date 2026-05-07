@@ -5,6 +5,6 @@ export async function uploadJson(json: object): Promise<string> {
   const file = new File([jsonString], 'upload.json', {
     type: 'application/json',
   });
-  const uri = await uploadToArweave(file);
-  return uri;
+  const result = await uploadToArweave(file);
+  return result.arweave_uri;
 }

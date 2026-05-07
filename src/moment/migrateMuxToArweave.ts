@@ -5,6 +5,7 @@ import { downloadVideo } from '../mux/downloadVideo';
 import { transcodeIfH265 } from '../video/transcodeIfH265';
 import uploadToArweave from '../arweave/uploadToArweave';
 import { uploadJson } from '../arweave/uploadJson';
+import logArweaveUpload from '../arweave/logArweaveUpload';
 import { updateMomentMetadata } from '../moment/updateMomentMetadata';
 import { findMuxAssetIdFromPlaybackUrl } from '../mux/findMuxAssetIdFromPlaybackUrl';
 import { deleteMuxAsset } from '../mux/deleteMuxAsset';
@@ -71,8 +72,15 @@ export async function migrateMuxToArweave({
   logger.log('Step 5 completed: Codec check and transcode done');
 
   // Step 5: Upload video to Arweave
-  const arweaveUri = await uploadToArweave(transcodedFile);
+  const uploadResult = await uploadToArweave(transcodedFile);
+  const arweaveUri = uploadResult.arweave_uri;
   if (!arweaveUri) throw new Error('Failed to upload video to Arweave');
+
+  await logArweaveUpload(uploadResult, {
+    file_size_bytes: transcodedFile.size,
+    content_type: transcodedFile.type || 'video/mp4',
+    artist_address: artistAddress,
+  });
 
   logger.log('Step 6 completed: Video uploaded to Arweave', { arweaveUri });
 
