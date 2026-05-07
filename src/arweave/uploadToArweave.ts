@@ -3,6 +3,11 @@ import turboClient from './turboClient';
 import patchFetch from './patchFetch';
 import { logger, retry } from '@trigger.dev/sdk/v3';
 
+export type ArweaveUploadResult = {
+  arweave_uri: string;
+  winc_cost: string;
+};
+
 const uploadRetryOptions = {
   maxAttempts: 3,
   factor: 2,
@@ -11,7 +16,7 @@ const uploadRetryOptions = {
   randomize: true,
 } as const;
 
-export const uploadToArweave = async (file: File): Promise<string> => {
+export const uploadToArweave = async (file: File): Promise<ArweaveUploadResult> => {
   const uint8Array = new Uint8Array(await file.arrayBuffer());
   const restoreFetch = patchFetch();
 
@@ -31,7 +36,7 @@ export const uploadToArweave = async (file: File): Promise<string> => {
         });
       }
 
-      const { id } = await turboClient.uploadFile({
+      const { id, winc } = await turboClient.uploadFile({
         fileStreamFactory: () => Readable.from(Buffer.from(uint8Array)),
         fileSizeFactory: () => file.size,
         dataItemOpts: {
@@ -50,7 +55,7 @@ export const uploadToArweave = async (file: File): Promise<string> => {
       }
       const arweaveURI = `ar://${id}`;
       logger.log('Upload complete', { arweaveURI });
-      return arweaveURI;
+      return { arweave_uri: arweaveURI, winc_cost: winc };
     }, uploadRetryOptions);
   } finally {
     restoreFetch();
