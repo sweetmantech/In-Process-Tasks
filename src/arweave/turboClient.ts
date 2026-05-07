@@ -4,6 +4,12 @@ const ARWEAVE_KEY = JSON.parse(
   Buffer.from(process.env.ARWEAVE_KEY as string, 'base64').toString()
 );
 
-const turboClient = TurboFactory.authenticated({ privateKey: ARWEAVE_KEY });
+const turboClient = TurboFactory.authenticated({
+  privateKey: ARWEAVE_KEY,
+});
+
+export const unauthTurboClient = TurboFactory.unauthenticated({
+  token: 'base-usdc',
+});
 
 export default turboClient;

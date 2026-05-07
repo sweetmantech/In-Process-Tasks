@@ -16,7 +16,9 @@ const uploadRetryOptions = {
   randomize: true,
 } as const;
 
-export const uploadToArweave = async (file: File): Promise<ArweaveUploadResult> => {
+export const uploadToArweave = async (
+  file: File
+): Promise<ArweaveUploadResult> => {
   const uint8Array = new Uint8Array(await file.arrayBuffer());
   const restoreFetch = patchFetch();
 
