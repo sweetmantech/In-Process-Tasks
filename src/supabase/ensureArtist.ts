@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '../supabase/client';
+import { getSupabaseClient } from './client';
 
 const ensureArtist = async (artistAddress: string): Promise<void> => {
   const supabase = getSupabaseClient();
